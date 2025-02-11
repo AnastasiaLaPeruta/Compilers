@@ -196,6 +196,13 @@ function processInput() {
                 compileOutput += `DEBUG Lexer - intop [ + ] found on line ${lineNumber + 1}\n`;
             }
 
+            else if(line[charIndex] == "w" && line[charIndex+1] == "h" && line[charIndex+2] == "i" && line[charIndex+3] == "l" &&
+                line[charIndex+4] == "e")
+            {
+                compileOutput += `DEBUG Lexer - WhileStatement [ while ] found on line ${lineNumber + 1}\n`;
+                charIndex+=5;
+            }
+
             // else we get increment error for an invalid token (not implemented yet)
 
             position++; // Move to the next global character position
