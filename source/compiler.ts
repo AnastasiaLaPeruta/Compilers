@@ -49,12 +49,40 @@ function processInput() {
             else if (line[charIndex] === "}") {
                 compileOutput += `DEBUG Lexer - CLOSE_BLOCK [ } ] found on line ${lineNumber + 1}\n`; 
             }
-            else if(line[charIndex] == "/" && line[charIndex+1] == "*"){ // if find start of comment, increment index until end is found
-                while (line[charIndex+2] != "*" && line[charIndex+3] != "/"){
-                    charIndex+=1;
+            //ChatGPT provided this method rather than the indefinite loop I realized I had that did not report unterminated comment error
+            else if (line[charIndex] == "/" && line[charIndex + 1] == "*") { 
+                let commentClosed = false; // Track if `*/` is found
+                charIndex += 2; // Move past `/*`
+            
+                while (lineNumber < lines.length) { // Loop through lines
+                    while (charIndex < lines[lineNumber].length - 1) { // Loop through characters
+                        if (lines[lineNumber][charIndex] === "*" && lines[lineNumber][charIndex + 1] === "/") {
+                            commentClosed = true; // Found closing `*/`
+                            charIndex++; // Move past `*/`
+                            break;
+                        }
+                        charIndex++; // Continue scanning inside the comment
+                    }
+            
+                    if (commentClosed) break; // Exit loop if `*/` was found
+                    
+                    lineNumber++; // Move to the next line
+                    charIndex = 0; // Reset char position for new line
                 }
-
+            
+                // If the comment was never closed, add an error and **STOP LEXING**
+                if (!commentClosed) {
+                    errors+=1;
+                    compileOutput += `ERROR Lexer - Error: Unterminated comment starting on line ${lineNumber + 1}.
+                     Lexing terminated due to fatal error.\n`;
+                    compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
+                    compileCode(compileOutput); // Output immediately
+                    return; // **STOP all further processing**
+                }
             }
+            
+            
+
             // else we get increment error for an invalid token (not implemented yet)
 
             position++; // Move to the next global character position
