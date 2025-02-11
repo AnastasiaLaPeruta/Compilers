@@ -73,8 +73,7 @@ function processInput() {
                 // If the comment was never closed, add an error and **STOP LEXING**
                 if (!commentClosed) {
                     errors+=1;
-                    compileOutput += `ERROR Lexer - Error: Unterminated comment starting on line ${lineNumber + 1}.
-                     Lexing terminated due to fatal error.\n`;
+                    compileOutput += `ERROR Lexer - Error: Unterminated comment starting on line ${lineNumber + 1}. Lexing terminated due to fatal error.\n`;
                     compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
                     compileCode(compileOutput); // Output immediately
                     return; // **STOP all further processing**
@@ -84,14 +83,35 @@ function processInput() {
             // checks for every other valid token now
 
             // print check
-            else if(line[charIndex] == "p" && line[charIndex + 1] == "r"&& line[charIndex + 2] == "i"
-                && line[charIndex + 3] == "n"&& line[charIndex + 4] == "t"&& line[charIndex + 5] == "("){
-                    charIndex = 6;
-                    while(line[charIndex] != ")"){ // loop until end is found
-                        charIndex++;
+            else if (line.substring(charIndex, charIndex + 6) === "print(") { // ChatGPT helped to improve what I had and found a way to track end of print
+                let printClosed = false; // Track if `)` is found
+                let printStartLine = lineNumber + 1; // Store where `print(` starts
+                charIndex += 6; // Move past `print(`
+            
+                while (lineNumber < lines.length) { // Loop through lines
+                    while (charIndex < lines[lineNumber].length) { // Loop through characters
+                        if (lines[lineNumber][charIndex] === ")") {
+                            printClosed = true; // Found closing `)`
+                            break;
+                        }
+                        charIndex++; // Continue scanning inside print()
                     }
-                    compileOutput += `DEBUG Lexer - PrintStatement [ print() ] found on line ${lineNumber + 1}\n`;
+            
+                    if (printClosed) break; // Exit loop if `)` was found
+                    
+                    lineNumber++; // Move to the next line
+                    charIndex = 0; // Reset char position for new line
+                }
+            
+                // If `print(` was never closed, add an error and STOP LEXING
+                if (!printClosed) {
+                    compileOutput += `ERROR Lexer - Error: Unterminated print() starting on line ${printStartLine}. Lexing terminated due to fatal error.\n`;
+                    compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
+                    compileCode(compileOutput); // Output immediately
+                    return; // **STOP all further processing**
+                }
             }
+            
 
             // else we get increment error for an invalid token (not implemented yet)
 
