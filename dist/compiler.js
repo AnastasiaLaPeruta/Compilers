@@ -199,6 +199,18 @@ function processInput() {
                 compileOutput += `DEBUG Lexer - boolval_F [ false ] found on line ${lineNumber + 1}\n`;
                 charIndex += 5;
             }
+            else if (line[charIndex] == "t" && line[charIndex + 1] == "r" && line[charIndex + 2] == "u" && line[charIndex + 3] == "e") {
+                compileOutput += `DEBUG Lexer - boolval_T [ true ] found on line ${lineNumber + 1}\n`;
+                charIndex += 4;
+            }
+            else if (line[charIndex] == " ") {
+                // does nothing if value is a space
+            }
+            // any int 0-9
+            else if (+line[charIndex] == 0 || +line[charIndex] == 1 || +line[charIndex] == 2 || +line[charIndex] == 3 || +line[charIndex] == 4
+                || +line[charIndex] == 5 || +line[charIndex] == 6 || +line[charIndex] == 7 || +line[charIndex] == 8 || +line[charIndex] == 9) {
+                compileOutput += `DEBUG Lexer - digit [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
+            }
             // else we get increment error for an invalid token (not implemented yet)
             position++; // Move to the next global character position
         }
