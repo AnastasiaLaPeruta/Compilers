@@ -157,30 +157,26 @@ function processInput() {
                 }
             }
 
-            // makes sure quotes get closed
+            // makes sure parenthesis get closed
             else if (line[charIndex] === '(') { 
                 let parenClosed = false; // Track if `)` is found
-                let parenStartLine = lineNumber + 1; // Store where `()` starts
-                compileOutput += `DEBUG Lexer - BooleanExpr [ start ( ] found on line ${lineNumber + 1}\n`;
-                
+                let parenStartLine = lineNumber + 1; // Store where `(` starts
+                charIndex ++; // Move past `(`
+                compileOutput += `DEBUG Lexer - BooleanExpr [ ( ] found on line ${lineNumber + 1}\n`;
                 while (lineNumber < lines.length) { // Loop through lines
                     while (charIndex < lines[lineNumber].length) { // Loop through characters
                         if (lines[lineNumber][charIndex] === ')') {
                             parenClosed = true; // Found closing `)`
-                            compileOutput += `DEBUG Lexer - BooleanExpr [ end ) ] found on line ${lineNumber + 1}\n`;
-                            charIndex++;
+                            compileOutput += `DEBUG Lexer - BooleanExpr [ ) ] found on line ${lineNumber + 1}\n`;
                             break;
                         }
-                        charIndex++; // Continue scanning inside
+                        charIndex++; // Continue scanning inside 
                     }
             
-                    if (parenClosed){
-                        break; // Exit loop if `)` was found
-                    }
-
-                    lineNumber++; // Move to the next line
-                    charIndex = 0; // Reset char position for new line     
+                    if (parenClosed) break; // Exit loop if `)` was found
                     
+                    lineNumber++; // Move to the next line
+                    charIndex = 0; // Reset char position for new line
                 }
             
                 // If `(` was never closed, add an error and STOP LEXING
