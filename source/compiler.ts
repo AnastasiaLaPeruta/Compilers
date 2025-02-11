@@ -81,7 +81,17 @@ function processInput() {
                 }
             }
             
-            
+            // checks for every other valid token now
+
+            // print check
+            else if(line[charIndex] == "p" && line[charIndex + 1] == "r"&& line[charIndex + 2] == "i"
+                && line[charIndex + 3] == "n"&& line[charIndex + 4] == "t"&& line[charIndex + 5] == "("){
+                    charIndex = 6;
+                    while(line[charIndex] != ")"){ // loop until end is found
+                        charIndex++;
+                    }
+                    compileOutput += `DEBUG Lexer - PrintStatement [ print() ] found on line ${lineNumber + 1}\n`;
+            }
 
             // else we get increment error for an invalid token (not implemented yet)
 
