@@ -121,6 +121,11 @@ function processInput() {
                 compileOutput += `DEBUG Lexer - ASSIGN_OP [ = ] found on line ${lineNumber + 1}\n`;
             }
 
+            else if(line[charIndex] == "!" && line[charIndex+1] == "="){
+                compileOutput += `DEBUG Lexer - BOOL_INEQUAL [ != ] found on line ${lineNumber + 1}\n`;
+                charIndex ++;
+            }
+
             // else we get increment error for an invalid token (not implemented yet)
 
             position++; // Move to the next global character position
