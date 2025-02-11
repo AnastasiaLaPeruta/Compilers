@@ -1,6 +1,6 @@
 // ChatGPT gave initial suggestion for tracking the line and position number of the input this way
 function processInput() {
-    const inputElement = document.getElementById("input-code") as HTMLTextAreaElement;
+    const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
     const text = inputElement.value; // Get text from textarea
 
     const lines = text.split("\n"); // Split into lines based on line breaks
@@ -27,7 +27,7 @@ function processInput() {
                 // Increment program number, print end and begin of program block and break out of loop
             } 
             else if (charList[0] === "{") {
-                compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found at position ${position}\n`;
+                compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line "${line}"\n`;
             } 
             // else we get an error for an invalid token (not implemented yet)
 
