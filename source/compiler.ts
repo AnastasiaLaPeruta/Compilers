@@ -229,6 +229,13 @@ function processInput() {
                     charIndex+=2;
                 }
 
+
+            else if(line[charIndex] == "f" && line[charIndex+1] == "a" && line[charIndex+2] == "l" && line[charIndex+3] == "s" &&
+                    line[charIndex+4] == "e")
+                {
+                    compileOutput += `DEBUG Lexer - boolval_F [ false ] found on line ${lineNumber + 1}\n`;
+                    charIndex+=5;
+                }
             // else we get increment error for an invalid token (not implemented yet)
 
             position++; // Move to the next global character position
