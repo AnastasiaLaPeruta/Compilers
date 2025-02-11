@@ -176,6 +176,11 @@ function processInput() {
                 compileOutput += `DEBUG Lexer - WhileStatement [ while ] found on line ${lineNumber + 1}\n`;
                 charIndex += 5;
             }
+            else if (line[charIndex] == "s" && line[charIndex + 1] == "t" && line[charIndex + 2] == "r" && line[charIndex + 3] == "i" &&
+                line[charIndex + 4] == "n" && line[charIndex + 5] == "g") {
+                compileOutput += `DEBUG Lexer - S_TYPE [ string ] found on line ${lineNumber + 1}\n`;
+                charIndex += 6;
+            }
             // else we get increment error for an invalid token (not implemented yet)
             position++; // Move to the next global character position
         }
