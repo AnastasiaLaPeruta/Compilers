@@ -186,6 +186,10 @@ function processInput() {
                 compileOutput += `DEBUG Lexer - B_TYPE [ boolean ] found on line ${lineNumber + 1}\n`;
                 charIndex += 7;
             }
+            else if (line[charIndex] == "i" && line[charIndex + 1] == "n" && line[charIndex + 2] == "t") {
+                compileOutput += `DEBUG Lexer - I_TYPE [ int ] found on line ${lineNumber + 1}\n`;
+                charIndex += 3;
+            }
             // else we get increment error for an invalid token (not implemented yet)
             position++; // Move to the next global character position
         }
