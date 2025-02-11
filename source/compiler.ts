@@ -87,7 +87,7 @@ function processInput() {
                 let printClosed = false; // Track if `)` is found
                 let printStartLine = lineNumber + 1; // Store where `print(` starts
                 charIndex += 6; // Move past `print(`
-            
+                compileOutput += `DEBUG Lexer - PRINT [ print() ] found on line ${lineNumber + 1}\n`;
                 while (lineNumber < lines.length) { // Loop through lines
                     while (charIndex < lines[lineNumber].length) { // Loop through characters
                         if (lines[lineNumber][charIndex] === ")") {
@@ -112,6 +112,10 @@ function processInput() {
                 }
             }
             
+            else if(line[charIndex] == "=" && line[charIndex+1] == "="){
+                compileOutput += `DEBUG Lexer - BOOL_EQUAL [ == ] found on line ${lineNumber + 1}\n`;
+                charIndex ++;
+            }
 
             // else we get increment error for an invalid token (not implemented yet)
 
