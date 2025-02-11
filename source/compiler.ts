@@ -6,11 +6,12 @@ function processInput() {
     const lines = text.split("\n"); // Split into lines based on line breaks
     let position = 0; // Tracks the character position
 
-    let charList: string[] = [];    //creates array
+    let charList: string[] = [];    // Creates array
     let compileOutput = "";
-    let program = 1; // this will increment with each $ and print ending and then new program block
-    compileOutput += "INFO Lexer - Lexing program 1...";
-    // loops through all lines
+    let program = 1; // This will increment with each $ and print ending and then new program block
+    compileOutput += `INFO Lexer - Lexing program ${program}...\n`;
+
+    // Loops through all lines
     for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
         const line = lines[lineNumber];
 
@@ -19,35 +20,31 @@ function processInput() {
         // Traverses the line character by character
         for (let charIndex = 0; charIndex < line.length; charIndex++) {
             console.log(`  Character ${charIndex + 1} (global position ${position}): '${line[charIndex]}'`);
-            charList.push(line[charIndex]);    // adds current char to array
+            charList.push(line[charIndex]); // Adds current char to array
 
-            // this is how we are at beginning of a token
-            if (line[charIndex] == "$"){ //check to see if fits token options
-                // increment program number, print end and begin of program block and break out of loop
-            }
-            else if (charList[0] == "{"){
-                compileOutput += "{"
-            }
-            // else we get an error for invalid token
-            else{
-
-            }
+            // Detect start of a token
+            if (line[charIndex] === "$") {
+                // Increment program number, print end and begin of program block and break out of loop
+            } 
+            else if (charList[0] === "{") {
+                compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found at position ${position}\n`;
+            } 
+            // else we get an error for an invalid token (not implemented yet)
 
             position++; // Move to the next global character position
         }
-        charList.length = 0;   // clears array to start over since token can't continue past newline char
+        charList.length = 0; // Clears array to start over since tokens can't continue past newline char
         position++; // Account for the newline character
     }
-    compileCode(compileOutput); // pass final output as parameter
+
+    compileCode(compileOutput); // Pass final output as parameter
 }
 
-// ChatGPT helped to generate initial example of grabbing input and spitting that directly out into output with no changes
-function compileCode(compileOutput) {
+// Function to display the output
+function compileCode(compileOutput: string) {
     const outputElement = document.getElementById("output") as HTMLTextAreaElement;
-    const result = compileOutput; // This outputs results of compiler
-    outputElement.value = String(result);
+    outputElement.value = compileOutput; // Display compiled output
 }
 
-// Attach event listeners correctly
+// Attach event listener correctly
 document.getElementById("compile-btn")?.addEventListener("click", processInput);
-document.getElementById("compile-btn")?.addEventListener("click", compileCode);
