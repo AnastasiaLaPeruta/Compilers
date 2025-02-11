@@ -25,15 +25,23 @@ function processInput() {
             if (line[charIndex] === "$") {
                 // Increment program number, print end and begin of program block and break out of loop
                 compileOutput += `DEBUG Lexer -  EOP [ $ ] found on line ${lineNumber + 1}\n`;
-                compileOutput += `INFO Lexer - Lex completed with  ${errors} errors\n\n`;
+                if (errors == 0){ // if no errors
+                    compileOutput += `INFO Lexer - Lex completed with  ${errors} errors\n\n`;
+                }
+                else{ // if any errors present
+                    compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
+                }
                 errors = 0; // reset errors
                 program += 1;
+                if (line[charIndex+1] == "$"){ // if two program endings in a row we have a warning
+                    compileOutput += `WARNING Lexer - Warning: line ${lineNumber + 1} - Extra "$". Program will continue to execute assuming you meant to do this...\n\n`;
+                }
+                charList.length = 0; // end of program means end of token
                 // executes only if there is more in program (either more lines or more characters on that final line)
-                if (line.substring(charIndex + 1).trim().length > 0 || // Check if there are non-space chars after $
-                    lineNumber + 1 < lines.length){ // ChatGPT helped turn this idea into code that accurately checks these conditions
+                if (line.substring(charIndex + 1).trim().length > 0 ||  // Non-space chars after `$`
+                lines.slice(lineNumber + 1).some(l => l.trim().length > 0)){ // Any remaining non-empty lines? ChatGPT helped turn this idea into code that accurately checks these conditions
                     compileOutput += `INFO Lexer - Lexing program ${program}...\n`;
                 }
-                break;
             } 
             else if (line[charIndex] === "{") {
                 compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line ${lineNumber + 1}\n`;
@@ -53,6 +61,15 @@ function processInput() {
         }
         charList.length = 0; // Clears array to start over since tokens can't continue past newline char
         position++; // Account for the newline character
+    }
+
+
+    // ChatGPT helped to implement my idea that there should be an error if input doesnt end with $ or end of comment
+    let trimmedText = text.replace(/\s+$/, ""); // Remove trailing spaces
+    if (!(trimmedText.endsWith("$") || trimmedText.endsWith("*/"))) {
+        compileOutput += `ERROR Lexer - Error: last line of program - Last character must be "$" or "*/".\n`;
+        errors++;
+        compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
     }
 
     compileCode(compileOutput); // Pass final output as parameter
