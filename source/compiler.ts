@@ -192,6 +192,10 @@ function processInput() {
                 }
             }
 
+            else if(line[charIndex] == "+"){
+                compileOutput += `DEBUG Lexer - intop [ + ] found on line ${lineNumber + 1}\n`;
+            }
+
             // else we get increment error for an invalid token (not implemented yet)
 
             position++; // Move to the next global character position
