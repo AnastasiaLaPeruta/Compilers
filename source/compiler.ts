@@ -8,14 +8,13 @@ function processInput() {
 
     let charList: string[] = [];    // Creates array
     let compileOutput = "";
+    let errors = 0;
     let program = 1; // This will increment with each $ and print ending and then new program block
     compileOutput += `INFO Lexer - Lexing program ${program}...\n`;
 
     // Loops through all lines
     for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
         const line = lines[lineNumber];
-
-        console.log(`Line ${lineNumber + 1}, starts at position ${position}: "${line}"`);
 
         // Traverses the line character by character
         for (let charIndex = 0; charIndex < line.length; charIndex++) {
@@ -25,11 +24,30 @@ function processInput() {
             // Detect start of a token
             if (line[charIndex] === "$") {
                 // Increment program number, print end and begin of program block and break out of loop
+                compileOutput += `DEBUG Lexer -  EOP [ $ ] found on line ${lineNumber + 1}\n`;
+                compileOutput += `INFO Lexer - Lex completed with  ${errors} errors\n\n`;
+                errors = 0; // reset errors
+                program += 1;
+                // executes only if there is more in program (either more lines or more characters on that final line)
+                if (line.substring(charIndex + 1).trim().length > 0 || // Check if there are non-space chars after $
+                    lineNumber + 1 < lines.length){ // ChatGPT helped turn this idea into code that accurately checks these conditions
+                    compileOutput += `INFO Lexer - Lexing program ${program}...\n`;
+                }
+                break;
             } 
-            else if (charList[0] === "{") {
-                compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line "${line}"\n`;
+            else if (line[charIndex] === "{") {
+                compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line ${lineNumber + 1}\n`;
             } 
-            // else we get an error for an invalid token (not implemented yet)
+            else if (line[charIndex] === "}") {
+                compileOutput += `DEBUG Lexer - CLOSE_BLOCK [ } ] found on line ${lineNumber + 1}\n`; 
+            }
+            else if(line[charIndex] == "/" && line[charIndex+1] == "*"){ // if find start of comment, increment index until end is found
+                while (line[charIndex+2] != "*" && line[charIndex+3] != "/"){
+                    charIndex+=1;
+                }
+
+            }
+            // else we get increment error for an invalid token (not implemented yet)
 
             position++; // Move to the next global character position
         }
