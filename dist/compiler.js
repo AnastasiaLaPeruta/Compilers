@@ -155,34 +155,34 @@ function processInput() {
             else if (line[charIndex] == "w" && line[charIndex + 1] == "h" && line[charIndex + 2] == "i" && line[charIndex + 3] == "l" &&
                 line[charIndex + 4] == "e") {
                 compileOutput += `DEBUG Lexer - WhileStatement [ while ] found on line ${lineNumber + 1}\n`;
-                charIndex += 5;
+                charIndex += 4;
             }
             else if (line[charIndex] == "s" && line[charIndex + 1] == "t" && line[charIndex + 2] == "r" && line[charIndex + 3] == "i" &&
                 line[charIndex + 4] == "n" && line[charIndex + 5] == "g") {
                 compileOutput += `DEBUG Lexer - I_TYPE [ string ] found on line ${lineNumber + 1}\n`;
-                charIndex += 6;
+                charIndex += 5;
             }
             else if (line[charIndex] == "b" && line[charIndex + 1] == "o" && line[charIndex + 2] == "o" && line[charIndex + 3] == "l" &&
                 line[charIndex + 4] == "e" && line[charIndex + 5] == "a" && line[charIndex + 6] == "n") {
                 compileOutput += `DEBUG Lexer - I_TYPE [ boolean ] found on line ${lineNumber + 1}\n`;
-                charIndex += 7;
+                charIndex += 6;
             }
             else if (line[charIndex] == "i" && line[charIndex + 1] == "n" && line[charIndex + 2] == "t") {
                 compileOutput += `DEBUG Lexer - I_TYPE [ int ] found on line ${lineNumber + 1}\n`;
-                charIndex += 3;
+                charIndex += 2;
             }
             else if (line[charIndex] == "i" && line[charIndex + 1] == "f") {
                 compileOutput += `DEBUG Lexer - IfStatement [ if ] found on line ${lineNumber + 1}\n`;
-                charIndex += 2;
+                charIndex += 1;
             }
             else if (line[charIndex] == "f" && line[charIndex + 1] == "a" && line[charIndex + 2] == "l" && line[charIndex + 3] == "s" &&
                 line[charIndex + 4] == "e") {
                 compileOutput += `DEBUG Lexer - boolval_F [ false ] found on line ${lineNumber + 1}\n`;
-                charIndex += 5;
+                charIndex += 4;
             }
             else if (line[charIndex] == "t" && line[charIndex + 1] == "r" && line[charIndex + 2] == "u" && line[charIndex + 3] == "e") {
                 compileOutput += `DEBUG Lexer - boolval_T [ true ] found on line ${lineNumber + 1}\n`;
-                charIndex += 4;
+                charIndex += 3;
             }
             else if (line[charIndex] == " ") {
                 // does nothing if value is a space
