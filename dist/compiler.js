@@ -89,27 +89,8 @@ function processInput() {
                 compileOutput += `DEBUG Lexer - BOOL_INEQUAL [ != ] found on line ${lineNumber + 1}\n`;
                 charIndex++;
             }
-            // makes sure quotes get closed
             else if (line[charIndex] === '"') {
-                let quoteClosed = false; // Track if `"` is found
-                let quoteStartLine = lineNumber + 1; // Store where `"` starts
-                charIndex++;
-                compileOutput += `DEBUG Lexer - StringExpr [ start " ] found on line ${lineNumber + 1}\n`;
-                while (charIndex < lines[lineNumber].length) { // Loop through characters
-                    if (lines[lineNumber][charIndex] === '"') {
-                        quoteClosed = true; // Found closing `"`
-                        compileOutput += `DEBUG Lexer - StringExpr [ close " ] found on line ${lineNumber + 1}\n`;
-                        break;
-                    }
-                    charIndex++; // Continue scanning inside 
-                }
-                // If `"` was never closed, add an error and STOP LEXING
-                if (!quoteClosed) {
-                    compileOutput += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${quoteStartLine}. Lexing terminated due to fatal error. Please add '"' to match your beginning quotation mark.\n`;
-                    compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
-                    compileCode(compileOutput); // Output immediately
-                    return; // **STOP all further processing**
-                }
+                compileOutput += `DEBUG Lexer - StringExpr [ " ] found on line ${lineNumber + 1}\n`;
             }
             else if (line[charIndex] === '(') {
                 compileOutput += `DEBUG Lexer - StartParen [ ( ] found on line ${lineNumber + 1}\n`;
