@@ -73,7 +73,7 @@ function processInput() {
                 // If the comment was never closed, add an error and **STOP LEXING**
                 if (!commentClosed) {
                     errors+=1;
-                    compileOutput += `ERROR Lexer - Error: Unterminated comment starting on line ${lineNumber + 1}. Lexing terminated due to fatal error.\n`;
+                    compileOutput += `ERROR Lexer - Error: Unterminated comment starting on line ${lineNumber + 1}. Lexing terminated due to fatal error. Please add '*/' to end your comment.\n`;
                     compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
                     compileCode(compileOutput); // Output immediately
                     return; // **STOP all further processing**
@@ -102,7 +102,7 @@ function processInput() {
             
                 // If `print(` was never closed, add an error and STOP LEXING
                 if (!printClosed) {
-                    compileOutput += `ERROR Lexer - Error: Unterminated print() starting on line ${printStartLine}. Lexing terminated due to fatal error.\n`;
+                    compileOutput += `ERROR Lexer - Error: Unterminated print() starting on line ${printStartLine}. Lexing terminated due to fatal error. Add ")" to complete your print statement. \n`;
                     compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
                     compileCode(compileOutput); // Output immediately
                     return; // **STOP all further processing**
@@ -142,7 +142,7 @@ function processInput() {
             
                 // If `"` was never closed, add an error and STOP LEXING
                 if (!quoteClosed) {
-                    compileOutput += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${quoteStartLine}. Lexing terminated due to fatal error.\n`;
+                    compileOutput += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${quoteStartLine}. Lexing terminated due to fatal error. Please add '"' to match your beginning quotation mark.\n`;
                     compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
                     compileCode(compileOutput); // Output immediately
                     return; // **STOP all further processing**
@@ -167,7 +167,7 @@ function processInput() {
             
                 // If `(` was never closed, add an error and STOP LEXING
                 if (!parenClosed) {
-                    compileOutput += `ERROR Lexer - Error: Unterminated BooleanExpr starting on line ${parenStartLine}. Lexing terminated due to fatal error.\n`;
+                    compileOutput += `ERROR Lexer - Error: Unterminated BooleanExpr starting on line ${parenStartLine}. Lexing terminated due to fatal error. Please add ")" to match your "(".\n`;
                     compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
                     compileCode(compileOutput); // Output immediately
                     return; // **STOP all further processing**
@@ -244,7 +244,7 @@ function processInput() {
             // else we get increment error for an invalid token
             else {
                 errors ++;
-                compileOutput += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${line[charIndex]} \n`;
+                compileOutput += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${line[charIndex]} Please reference grammar guide for this language. Perhaps you tried to type an invalid character outside of the letters a through z? \n`;
             }
 
             position++; // Move to the next global character position
@@ -254,10 +254,10 @@ function processInput() {
     }
 
 
-    // ChatGPT helped to implement my idea that there should be an error if input doesnt end with $ or end of comment
+    // ChatGPT helped to implement my idea that there should be an error if input doesnt end with $
     let trimmedText = text.replace(/\s+$/, ""); // Remove trailing spaces
-    if (!(trimmedText.endsWith("$") || trimmedText.endsWith("*/"))) {
-        compileOutput += `ERROR Lexer - Error: last line of program - Last character must be "$" or "*/".\n`;
+    if (!(trimmedText.endsWith("$"))) {
+        compileOutput += `ERROR Lexer - Error: last line of program - Please complete program with "$" as your last character.\n`;
         errors++;
         compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
     }
