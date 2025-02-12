@@ -241,7 +241,11 @@ function processInput() {
                 compileOutput += `DEBUG Lexer - ID [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
             }
             
-            // else we get increment error for an invalid token (not implemented yet)
+            // else we get increment error for an invalid token
+            else {
+                errors ++;
+                compileOutput += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${line[charIndex]} \n`;
+            }
 
             position++; // Move to the next global character position
         }
