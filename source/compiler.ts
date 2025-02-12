@@ -188,14 +188,14 @@ function processInput() {
             else if(line[charIndex] == "s" && line[charIndex+1] == "t" && line[charIndex+2] == "r" && line[charIndex+3] == "i" &&
                 line[charIndex+4] == "n" && line[charIndex+5] == "g" )
             {
-                compileOutput += `DEBUG Lexer - S_TYPE [ string ] found on line ${lineNumber + 1}\n`;
+                compileOutput += `DEBUG Lexer - I_TYPE [ string ] found on line ${lineNumber + 1}\n`;
                 charIndex+=6;
             }
 
             else if(line[charIndex] == "b" && line[charIndex+1] == "o" && line[charIndex+2] == "o" && line[charIndex+3] == "l" &&
                 line[charIndex+4] == "e" && line[charIndex+5] == "a" && line[charIndex+6] == "n" )
             {
-                compileOutput += `DEBUG Lexer - B_TYPE [ boolean ] found on line ${lineNumber + 1}\n`;
+                compileOutput += `DEBUG Lexer - I_TYPE [ boolean ] found on line ${lineNumber + 1}\n`;
                 charIndex+=7;
             }
 
