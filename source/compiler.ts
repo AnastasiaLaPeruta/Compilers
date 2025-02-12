@@ -87,20 +87,17 @@ function processInput() {
                 let printClosed = false; // Track if `)` is found
                 let printStartLine = lineNumber + 1; // Store where `print(` starts
                 charIndex += 6; // Move past `print(`
-                compileOutput += `DEBUG Lexer - PRINT [ print() ] found on line ${lineNumber + 1}\n`;
-                while (lineNumber < lines.length) { // Loop through lines
-                    while (charIndex < lines[lineNumber].length) { // Loop through characters
-                        if (lines[lineNumber][charIndex] === ")") {
-                            printClosed = true; // Found closing `)`
-                            break;
-                        }
-                        charIndex++; // Continue scanning inside print()
+
+                compileOutput += `DEBUG Lexer - PRINT_START [ print( ] found on line ${lineNumber + 1}\n`;
+               
+
+                while (charIndex < lines[lineNumber].length) { // Loop through characters
+                    if (lines[lineNumber][charIndex] === ")") {
+                        printClosed = true; // Found closing `)`
+                        compileOutput += `DEBUG Lexer - PRINT_END [ ) ] found on line ${lineNumber + 1}\n`;
+                        break;
                     }
-            
-                    if (printClosed) break; // Exit loop if `)` was found
-                    
-                    lineNumber++; // Move to the next line
-                    charIndex = 0; // Reset char position for new line
+                        charIndex++; // Continue scanning inside print()
                 }
             
                 // If `print(` was never closed, add an error and STOP LEXING
