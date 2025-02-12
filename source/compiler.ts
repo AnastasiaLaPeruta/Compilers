@@ -235,6 +235,12 @@ function processInput() {
             ){
                 compileOutput += `DEBUG Lexer - digit [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
             }
+
+            else if (line[charIndex] >= "a" && line[charIndex] <= "z") { // ChatGPT reminded me of how to make sure value was a letter between a and z
+                // This character is a lowercase letter
+                compileOutput += `DEBUG Lexer - ID [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
+            }
+            
             // else we get increment error for an invalid token (not implemented yet)
 
             position++; // Move to the next global character position
