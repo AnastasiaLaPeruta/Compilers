@@ -131,29 +131,13 @@ function processInput() {
                 }
             }
 
-            // makes sure parenthesis get closed
-            else if (line[charIndex] === '(') { 
-                let parenClosed = false; // Track if `)` is found
-                let parenStartLine = lineNumber + 1; // Store where `(` starts
-                compileOutput += `DEBUG Lexer - BooleanExpr [ ( ] found on line ${lineNumber + 1}\n`;
-                
-                
-                while (charIndex < lines[lineNumber].length) { // Loop through characters
-                    if (lines[lineNumber][charIndex] === ')') {
-                        parenClosed = true; // Found closing `)`
-                        compileOutput += `DEBUG Lexer - BooleanExpr [ ) ] found on line ${lineNumber + 1}\n`;
-                        break;
-                    }
-                    charIndex++; // Continue scanning inside 
-                }
             
-                // If `(` was never closed, add an error and STOP LEXING
-                if (!parenClosed) {
-                    compileOutput += `ERROR Lexer - Error: Unterminated BooleanExpr starting on line ${parenStartLine}. Lexing terminated due to fatal error. Please add ")" to match your "(".\n`;
-                    compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
-                    compileCode(compileOutput); // Output immediately
-                    return; // **STOP all further processing**
-                }
+            else if (line[charIndex] === '(') {   
+                compileOutput += `DEBUG Lexer - StartParen [ ( ] found on line ${lineNumber + 1}\n`;
+            }
+
+            else if (line[charIndex] === ')') {   
+                compileOutput += `DEBUG Lexer - CloseParen [ ) ] found on line ${lineNumber + 1}\n`;
             }
 
             else if(line[charIndex] == "+"){
