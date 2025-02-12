@@ -87,7 +87,7 @@ function processInput() {
 
                 charIndex += 4; // Move past `print`
 
-                compileOutput += `DEBUG Lexer - PRINT_START [ print ] found on line ${lineNumber + 1}\n`;
+                compileOutput += `DEBUG Lexer - PRINT [ print ] found on line ${lineNumber + 1}\n`;
             
             }
             

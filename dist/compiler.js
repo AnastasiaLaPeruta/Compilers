@@ -76,7 +76,7 @@ function processInput() {
             // print check
             else if (line.substring(charIndex, charIndex + 5) === "print") {
                 charIndex += 4; // Move past `print`
-                compileOutput += `DEBUG Lexer - PRINT_START [ print ] found on line ${lineNumber + 1}\n`;
+                compileOutput += `DEBUG Lexer - PRINT [ print ] found on line ${lineNumber + 1}\n`;
             }
             else if (line[charIndex] == "=" && line[charIndex + 1] == "=") {
                 compileOutput += `DEBUG Lexer - BOOL_EQUAL [ == ] found on line ${lineNumber + 1}\n`;
