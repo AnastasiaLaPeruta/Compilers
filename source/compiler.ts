@@ -226,7 +226,8 @@ function processInput() {
                 }
 
             else if (line[charIndex] == " "){
-                // does nothing if value is a space
+                // notes spaces
+                compileOutput += `DEBUG Lexer - SPACE [ ] found on line ${lineNumber + 1}\n`;
             }
 
             // any int 0-9
@@ -241,6 +242,7 @@ function processInput() {
                 compileOutput += `DEBUG Lexer - ID [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
             }
             
+
             // else we get increment error for an invalid token
             else {
                 errors ++;

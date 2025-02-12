@@ -185,7 +185,8 @@ function processInput() {
                 charIndex += 3;
             }
             else if (line[charIndex] == " ") {
-                // does nothing if value is a space
+                // notes spaces
+                compileOutput += `DEBUG Lexer - SPACE [ ] found on line ${lineNumber + 1}\n`;
             }
             // any int 0-9
             else if (+line[charIndex] == 0 || +line[charIndex] == 1 || +line[charIndex] == 2 || +line[charIndex] == 3 || +line[charIndex] == 4
