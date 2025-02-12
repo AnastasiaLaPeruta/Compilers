@@ -83,30 +83,12 @@ function processInput() {
             // checks for every other valid token now
 
             // print check
-            else if (line.substring(charIndex, charIndex + 6) === "print(") { // ChatGPT helped to improve what I had and found a way to track end of print
-                let printClosed = false; // Track if `)` is found
-                let printStartLine = lineNumber + 1; // Store where `print(` starts
-                charIndex += 6; // Move past `print(`
+            else if (line.substring(charIndex, charIndex + 5) === "print") {
 
-                compileOutput += `DEBUG Lexer - PRINT_START [ print( ] found on line ${lineNumber + 1}\n`;
-               
+                charIndex += 4; // Move past `print`
 
-                while (charIndex < lines[lineNumber].length) { // Loop through characters
-                    if (lines[lineNumber][charIndex] === ")") {
-                        printClosed = true; // Found closing `)`
-                        compileOutput += `DEBUG Lexer - PRINT_END [ ) ] found on line ${lineNumber + 1}\n`;
-                        break;
-                    }
-                        charIndex++; // Continue scanning inside print()
-                }
+                compileOutput += `DEBUG Lexer - PRINT_START [ print ] found on line ${lineNumber + 1}\n`;
             
-                // If `print(` was never closed, add an error and STOP LEXING
-                if (!printClosed) {
-                    compileOutput += `ERROR Lexer - Error: Unterminated print() starting on line ${printStartLine}. Lexing terminated due to fatal error. Add ")" to complete your print statement. \n`;
-                    compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
-                    compileCode(compileOutput); // Output immediately
-                    return; // **STOP all further processing**
-                }
             }
             
             else if(line[charIndex] == "=" && line[charIndex+1] == "="){
