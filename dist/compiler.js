@@ -24,6 +24,7 @@ function lexer() {
                 compileOutput += `DEBUG Lexer -  EOP [ $ ] found on line ${lineNumber + 1}\n`;
                 if (errors == 0) { // if no errors
                     compileOutput += `INFO Lexer - Lex completed with  ${errors} errors\n\n`;
+                    parser(); // Call parser if no errors
                 }
                 else { // if any errors present
                     compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
@@ -207,8 +208,11 @@ function lexer() {
         compileCode(compileOutput); // Output immediately
         return; // **STOP all further processing**
     }
-    compileOutput += `LEXER: Lex completed successfully with ${errors} error(s)\n\n`; // Display successful completion message
     compileCode(compileOutput); // Pass final output as parameter
+}
+// Parser function
+function parser() {
+    //
 }
 // Function to display the output
 function compileCode(compileOutput) {
