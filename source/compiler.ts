@@ -1,5 +1,5 @@
 // ChatGPT gave initial suggestion for tracking the line and position number of the input this way
-function processInput() {
+function lexer() {
     const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
     const text = inputElement.value; // Get text from textarea
 
@@ -264,4 +264,4 @@ function compileCode(compileOutput: string) {
 }
 
 // Attach event listener correctly
-document.getElementById("compile-btn")?.addEventListener("click", processInput);
+document.getElementById("compile-btn")?.addEventListener("click", lexer);
