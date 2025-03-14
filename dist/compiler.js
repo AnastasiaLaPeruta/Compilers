@@ -102,8 +102,16 @@ function processInput() {
                             compileOutput += `DEBUG Lexer - StringExpr [ end " ] found on line ${lineNumber + 1}\n`;
                             break;
                         }
-                        // prints out each character within the quotes
-                        compileOutput += `DEBUG Lexer - char [ ${lines[lineNumber][charIndex]} ] found on line ${lineNumber + 1}\n`;
+                        // prints out each character within the quotes only if it is a space or lowercase a-z
+                        if (line[charIndex] >= "a" && line[charIndex] <= "z" || line[charIndex] == " ") {
+                            compileOutput += `DEBUG Lexer - char [ ${lines[lineNumber][charIndex]} ] found on line ${lineNumber + 1}\n`;
+                        }
+                        else {
+                            compileOutput += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${line[charIndex]} Only lowercase letters a through z and spaces are allowed in strings \n`;
+                            compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
+                            compileCode(compileOutput); // Output immediately
+                            return; // **STOP all further processing**
+                        }
                         charIndex++; // Continue scanning inside ""
                     }
                     if (quoteClosed)
