@@ -293,31 +293,42 @@ function lexer() {
 
 }
 
-// Parse function
-function parse() {
-    
+class Parser {
+    private tokens: Token[];
+    private current: number = 0;
+    public output: string = "";
+    public cst: CST; 
+
+    constructor(tokens: Token[]) {
+        this.tokens = tokens;
+        this.cst = new CST();
+    }
+
+    public parse(): { output: string, tree: CST, error: string | null } {
+        this.output += "PARSER --> execute()\n";
+        this.parseProgram();
+        return { output: this.output, tree: this.cst, error: null /* or error details */ };
+    }
+
+    private parseProgram() {
+        this.output += "PARSER --> parseProgram()\n";
+        // build CST node for Program
+        // call parseBlock(), then expect the EOP token
+    }
+
+    // Implement parseBlock, parseStatementList, etc.
+    private match(expected: string) {
+        const token = this.tokens[this.current];
+        if (token && token.type === expected) {
+            // add node to CST
+            this.current++;
+        } else {
+            // report error with details
+            throw new Error(`Expected ${expected} but got ${token?.lexeme} at line ${token?.line}`);
+        }
+    }
 }
 
-function parseProgram() {
-    parseBlock();
-    match(EOP);
-   }
-function  parseBlock() {
-    match(OPEN_BRACE);
-    parseStatementList();
-    match(CLOSE_BRACE);
-}
-    ⋮
-function parsePrintStatement() {
-    match(KEYWORD_PRINT);
-    match( OPEN_PAREN );
-    parseExpr();
-    match( CLOSE_PAREN );
-}
-
-function match(){
-
-}
 
 // Function to display the output
 function compileCode(compileOutput: string) {
