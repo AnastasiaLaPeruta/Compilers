@@ -106,9 +106,38 @@ function processInput() {
             }
 
            
-            else if (line[charIndex] === '"') { 
-                compileOutput += `DEBUG Lexer - StringExpr [ " ] found on line ${lineNumber + 1}\n`;
-            }
+            // makes sure quotes get closed
+             else if (line[charIndex] === '"') { 
+                 let quoteClosed = false; // Track if `"` is found
+                 let quoteStartLine = lineNumber + 1; // Store where `"` starts
+                 charIndex ++; // Move past `"`
+                 compileOutput += `DEBUG Lexer - StringExpr [ start " ] found on line ${lineNumber + 1}\n`;
+                 while (lineNumber < lines.length) { // Loop through lines
+                     while (charIndex < lines[lineNumber].length) { // Loop through characters
+                         if (lines[lineNumber][charIndex] === '"') {
+                             quoteClosed = true; // Found closing `"`
+                             compileOutput += `DEBUG Lexer - StringExpr [ end " ] found on line ${lineNumber + 1}\n`;
+                             break;
+                         }
+                         // prints out each character within the quotes
+                         compileOutput += `DEBUG Lexer - char [ ${lines[lineNumber][charIndex]} ] found on line ${lineNumber + 1}\n`;
+                         charIndex++; // Continue scanning inside ""
+                     }
+             
+                     if (quoteClosed) break; // Exit loop if `"` was found
+                     
+                     lineNumber++; // Move to the next line
+                     charIndex = 0; // Reset char position for new line
+                 }
+             
+                 // If `"` was never closed, add an error and STOP LEXING
+                 if (!quoteClosed) {
+                     compileOutput += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${quoteStartLine}. Lexing terminated due to fatal error.\n`;
+                     compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
+                     compileCode(compileOutput); // Output immediately
+                     return; // **STOP all further processing**
+                 }
+             }
 
             
             else if (line[charIndex] === '(') {   
