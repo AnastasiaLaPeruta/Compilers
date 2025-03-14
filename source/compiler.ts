@@ -1,4 +1,14 @@
-// ChatGPT gave initial suggestion for tracking the line and position number of the input this way
+// ChatGPT gave initial suggestion for tracking the line and position number of the input this way, also utilized for getting started on parser
+
+interface Token {
+    type: string;
+    lexeme: string;
+    line: number;
+    column: number;
+}
+
+let tokens: Token[] = [];
+
 function lexer() {
     const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
     const text = inputElement.value; // Get text from textarea
@@ -25,6 +35,7 @@ function lexer() {
             // Detect start of a token
             if (line[charIndex] === "$") {
                 // Increment program number, print end and begin of program block and break out of loop
+                tokens.push({ type: "EOP", lexeme: "$", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer -  EOP [ $ ] found on line ${lineNumber + 1}\n`;
                 if (errors == 0){ // if no errors
                     compileOutput += `INFO Lexer - Lex completed with  ${errors} errors\n\n`;
@@ -46,9 +57,11 @@ function lexer() {
                 }
             } 
             else if (line[charIndex] === "{") {
+                tokens.push({ type: "LBRACE", lexeme: "{", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line ${lineNumber + 1}\n`;
             } 
             else if (line[charIndex] === "}") {
+                tokens.push({ type: "RBRACE", lexeme: "}", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - CLOSE_BLOCK [ } ] found on line ${lineNumber + 1}\n`; 
             }
             //ChatGPT provided this method rather than the indefinite loop I realized I had that did not report unterminated comment error
@@ -88,21 +101,24 @@ function lexer() {
             else if (line.substring(charIndex, charIndex + 5) === "print") {
 
                 charIndex += 4; // Move past `print`
-
+                tokens.push({ type: "PRINT", lexeme: "print", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - PRINT [ print ] found on line ${lineNumber + 1}\n`;
             
             }
             
             else if(line[charIndex] == "=" && line[charIndex+1] == "="){
+                tokens.push({ type: "BOOL_EQUAL", lexeme: "==", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - BOOL_EQUAL [ == ] found on line ${lineNumber + 1}\n`;
                 charIndex ++;
             }
 
             else if(line[charIndex] == "="){ // don't have to worry about == because it checks for that before this case
+                tokens.push({ type: "ASSIGN_OP", lexeme: "=", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - ASSIGN_OP [ = ] found on line ${lineNumber + 1}\n`;
             }
 
             else if(line[charIndex] == "!" && line[charIndex+1] == "="){
+                tokens.push({ type: "BOOL_INEQUAL", lexeme: "!=", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - BOOL_INEQUAL [ != ] found on line ${lineNumber + 1}\n`;
                 charIndex ++;
             }
@@ -113,17 +129,20 @@ function lexer() {
                  let quoteClosed = false; // Track if `"` is found
                  let quoteStartLine = lineNumber + 1; // Store where `"` starts
                  charIndex ++; // Move past `"`
+                 tokens.push({ type: "LQUOTE", lexeme: '"', line: lineNumber + 1, column: charIndex + 1 });
                  compileOutput += `DEBUG Lexer - StringExpr [ start " ] found on line ${lineNumber + 1}\n`;
                  while (lineNumber < lines.length) { // Loop through lines
                      while (charIndex < lines[lineNumber].length) { // Loop through characters
                          if (lines[lineNumber][charIndex] === '"') {
                              quoteClosed = true; // Found closing `"`
+                             tokens.push({ type: "RQUOTE", lexeme: '"', line: lineNumber + 1, column: charIndex + 1 });
                              compileOutput += `DEBUG Lexer - StringExpr [ end " ] found on line ${lineNumber + 1}\n`;
                              break;
                          }
                          // prints out each character within the quotes only if it is a space or lowercase a-z
                          if (line[charIndex] >= "a" && line[charIndex] <= "z" || line[charIndex] == " "){
-                            compileOutput += `DEBUG Lexer - char [ ${lines[lineNumber][charIndex]} ] found on line ${lineNumber + 1}\n`;
+                            tokens.push({ type: "CHAR", lexeme: "${lines[lineNumber][charIndex]}", line: lineNumber + 1, column: charIndex + 1 });
+                            compileOutput += `DEBUG Lexer - Char [ ${lines[lineNumber][charIndex]} ] found on line ${lineNumber + 1}\n`;
                          } 
                          else {
                                 compileOutput += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${line[charIndex]} Only lowercase letters a through z and spaces are allowed in strings \n`;
@@ -159,20 +178,24 @@ function lexer() {
 
             
             else if (line[charIndex] === '(') {   
+                tokens.push({ type: "LPAREN", lexeme: "(", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - StartParen [ ( ] found on line ${lineNumber + 1}\n`;
             }
 
-            else if (line[charIndex] === ')') {   
+            else if (line[charIndex] === ')') {  
+                tokens.push({ type: "RPAREN", lexeme: ")", line: lineNumber + 1, column: charIndex + 1 }); 
                 compileOutput += `DEBUG Lexer - CloseParen [ ) ] found on line ${lineNumber + 1}\n`;
             }
 
             else if(line[charIndex] == "+"){
+                tokens.push({ type: "INTOP", lexeme: "+", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - intop [ + ] found on line ${lineNumber + 1}\n`;
             }
 
             else if(line[charIndex] == "w" && line[charIndex+1] == "h" && line[charIndex+2] == "i" && line[charIndex+3] == "l" &&
                 line[charIndex+4] == "e")
             {
+                tokens.push({ type: "WHILE", lexeme: "while", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - WhileStatement [ while ] found on line ${lineNumber + 1}\n`;
                 charIndex+=4;
             }
@@ -187,18 +210,21 @@ function lexer() {
             else if(line[charIndex] == "b" && line[charIndex+1] == "o" && line[charIndex+2] == "o" && line[charIndex+3] == "l" &&
                 line[charIndex+4] == "e" && line[charIndex+5] == "a" && line[charIndex+6] == "n" )
             {
+                tokens.push({ type: "ITYPE", lexeme: "boolean", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - I_TYPE [ boolean ] found on line ${lineNumber + 1}\n`;
                 charIndex+=6;
             }
 
             else if(line[charIndex] == "i" && line[charIndex+1] == "n" && line[charIndex+2] == "t" )
             {
+                tokens.push({ type: "ITYPE", lexeme: "int", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - I_TYPE [ int ] found on line ${lineNumber + 1}\n`;
                 charIndex+=2;
             }
 
             else if(line[charIndex] == "i" && line[charIndex+1] == "f")
                 {
+                    tokens.push({ type: "IFSTATEMENT", lexeme: "if", line: lineNumber + 1, column: charIndex + 1 });
                     compileOutput += `DEBUG Lexer - IfStatement [ if ] found on line ${lineNumber + 1}\n`;
                     charIndex+=1;
                 }
@@ -207,12 +233,14 @@ function lexer() {
             else if(line[charIndex] == "f" && line[charIndex+1] == "a" && line[charIndex+2] == "l" && line[charIndex+3] == "s" &&
                     line[charIndex+4] == "e")
                 {
+                    tokens.push({ type: "BOOLVALF", lexeme: "false", line: lineNumber + 1, column: charIndex + 1 });
                     compileOutput += `DEBUG Lexer - boolval_F [ false ] found on line ${lineNumber + 1}\n`;
                     charIndex+=4;
                 }
 
             else if(line[charIndex] == "t" && line[charIndex+1] == "r" && line[charIndex+2] == "u" && line[charIndex+3] == "e")
                 {
+                    tokens.push({ type: "BOOLVALT", lexeme: "true", line: lineNumber + 1, column: charIndex + 1 });
                     compileOutput += `DEBUG Lexer - boolval_T [ true ] found on line ${lineNumber + 1}\n`;
                     charIndex+=3;
                 }
@@ -225,11 +253,13 @@ function lexer() {
             else if (+line[charIndex] == 0 || +line[charIndex] == 1 || +line[charIndex] == 2 || +line[charIndex] == 3 || +line[charIndex] == 4
                  || +line[charIndex] == 5 || +line[charIndex] == 6 || +line[charIndex] == 7 || +line[charIndex] == 8 || +line[charIndex] == 9
             ){
+                tokens.push({ type: "DIGIT", lexeme: "${line[charIndex]}", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - digit [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
             }
 
             else if (line[charIndex] >= "a" && line[charIndex] <= "z") { // ChatGPT reminded me of how to make sure value was a letter between a and z
                 // This character is a lowercase letter
+                tokens.push({ type: "ID", lexeme: "${line[charIndex]}", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - ID [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
             }
             
@@ -265,7 +295,28 @@ function lexer() {
 
 // Parse function
 function parse() {
-    //
+    
+}
+
+function parseProgram() {
+    parseBlock();
+    match(EOP);
+   }
+function  parseBlock() {
+    match(OPEN_BRACE);
+    parseStatementList();
+    match(CLOSE_BRACE);
+}
+    ⋮
+function parsePrintStatement() {
+    match(KEYWORD_PRINT);
+    match( OPEN_PAREN );
+    parseExpr();
+    match( CLOSE_PAREN );
+}
+
+function match(){
+
 }
 
 // Function to display the output
