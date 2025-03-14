@@ -259,6 +259,14 @@ function lexer() {
     compileOutput += `LEXER: Lex completed successfully with ${errors} error(s)\n\n`; // Display successful completion message
     compileCode(compileOutput); // Pass final output as parameter
 
+    // call parser
+    parser();
+
+}
+
+// Parser function
+function parser() {
+    //
 }
 
 // Function to display the output
