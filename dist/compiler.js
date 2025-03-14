@@ -1,6 +1,6 @@
 var _a;
 // ChatGPT gave initial suggestion for tracking the line and position number of the input this way
-function processInput() {
+function lexer() {
     const inputElement = document.getElementById("userInput");
     const text = inputElement.value; // Get text from textarea
     const lines = text.split("\n"); // Split into lines based on line breaks
@@ -204,7 +204,10 @@ function processInput() {
         compileOutput += `ERROR Lexer - Error: last line of program - Please complete program with "$" as your last character.\n`;
         errors++;
         compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
+        compileCode(compileOutput); // Output immediately
+        return; // **STOP all further processing**
     }
+    compileOutput += `LEXER: Lex completed successfully with ${errors} error(s)\n\n`; // Display successful completion message
     compileCode(compileOutput); // Pass final output as parameter
 }
 // Function to display the output
@@ -213,5 +216,5 @@ function compileCode(compileOutput) {
     outputElement.value = compileOutput; // Display compiled output
 }
 // Attach event listener correctly
-(_a = document.getElementById("compile-btn")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", processInput);
+(_a = document.getElementById("compile-btn")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", lexer);
 //# sourceMappingURL=compiler.js.map

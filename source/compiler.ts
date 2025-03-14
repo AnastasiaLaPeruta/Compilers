@@ -252,9 +252,13 @@ function lexer() {
         compileOutput += `ERROR Lexer - Error: last line of program - Please complete program with "$" as your last character.\n`;
         errors++;
         compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
+        compileCode(compileOutput); // Output immediately
+        return; // **STOP all further processing**
     }
 
+    compileOutput += `LEXER: Lex completed successfully with ${errors} error(s)\n\n`; // Display successful completion message
     compileCode(compileOutput); // Pass final output as parameter
+
 }
 
 // Function to display the output
