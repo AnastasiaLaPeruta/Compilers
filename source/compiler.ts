@@ -144,7 +144,7 @@ function lexer() {
                          }
                          // prints out each character within the quotes only if it is a space or lowercase a-z
                          if (line[charIndex] >= "a" && line[charIndex] <= "z" || line[charIndex] == " "){
-                            tokens.push({ type: "CHAR", lexeme: "${lines[lineNumber][charIndex]}", line: lineNumber + 1, column: charIndex + 1 });
+                            tokens.push({ type: "CHAR", lexeme: line[charIndex], line: lineNumber + 1, column: charIndex + 1 });
                             compileOutput += `DEBUG Lexer - Char [ ${lines[lineNumber][charIndex]} ] found on line ${lineNumber + 1}\n`;
                          } 
                          else {
@@ -262,7 +262,7 @@ function lexer() {
 
             else if (line[charIndex] >= "a" && line[charIndex] <= "z") { // ChatGPT reminded me of how to make sure value was a letter between a and z
                 // This character is a lowercase letter
-                tokens.push({ type: "ID", lexeme: "${line[charIndex]}", line: lineNumber + 1, column: charIndex + 1 });
+                tokens.push({ type: "ID", lexeme: line[charIndex], line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - ID [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
             }
             
