@@ -308,6 +308,12 @@ class Parser {
         this.cst = new CST();
     }
 
+    // Helper to peek at the current token without consuming it
+    private peekToken(): Token | null {
+        return this.current < this.tokens.length ? this.tokens[this.current] : null;
+    }
+
+
     // Starts parsing the program
     public parse(): { output: string, tree: CST, error: string | null } {
         this.output += "PARSER --> parseProgram()\n";
