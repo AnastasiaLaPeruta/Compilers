@@ -1,4 +1,4 @@
-// ChatGPT gave initial suggestion for tracking the line and position number of the input this way, also utilized for getting started on parser
+// ChatGPT gave initial suggestion for tracking the line and position number of the input this way, also utilized for parser
 
 interface Token {
     type: string;
@@ -307,14 +307,19 @@ class Parser {
         this.cst = new CST();
     }
 
+    // Starts parsing the program
     public parse(): { output: string, tree: CST, error: string | null } {
-        this.output += "PARSER --> execute()\n";
+        this.output += "PARSER --> parseProgram()\n";
         this.parseProgram();
-        return { output: this.output, tree: this.cst, error: null /* or error details */ };
+        return { output: this.output, tree: this.cst, error: null };
     }
 
     private parseProgram() {
-        this.output += "PARSER --> parseProgram()\n";
+        this.cst.addNode("branch", "Program");
+        this.parseBlock();
+        // Assume matchToken checks that the current token is an EOP marker and advances the token index
+        this.match("EOP");
+        this.cst.moveUp();
         // build CST node for Program
         // call parseBlock(), then expect the EOP token
     }
@@ -331,6 +336,68 @@ class Parser {
         }
     }
 }
+
+// Represents a node in the CST
+class CSTNode {
+    label: string;
+    children: CSTNode[];
+    parent: CSTNode | null;
+  
+    constructor(label: string) {
+      this.label = label;
+      this.children = [];
+      this.parent = null;
+    }
+  }
+  
+  // Represents the entire CST
+  class CST {
+    root: CSTNode | null;
+    current: CSTNode | null;
+  
+    constructor() {
+      this.root = null;
+      this.current = null;
+    }
+  
+    // Add a node to the CST, kind indicates whether it is a branch (non-terminal) or a leaf (terminal). For branches, we update the current node.
+    addNode(kind: "branch" | "leaf", label: string): void {
+      const newNode = new CSTNode(label);
+  
+      if (this.root === null) {
+        // This is the root of the tree
+        this.root = newNode;
+        this.current = newNode;
+      } else {
+        if (this.current) {
+          newNode.parent = this.current;
+          this.current.children.push(newNode);
+        }
+        // Only change the current node if it is a branch
+        if (kind === "branch") {
+          this.current = newNode;
+        }
+      }
+    }
+  
+    // After finishing a non-terminal rule, move up to the parent node
+    moveUp(): void {
+      if (this.current && this.current.parent) {
+        this.current = this.current.parent;
+      }
+    }
+  
+    // A helper function to print the tree as a formatted string (for display)
+    print(node: CSTNode | null = this.root, indent: string = ""): string {
+      if (!node) return "";
+      let result = indent + `<${node.label}>\n`;
+      for (const child of node.children) {
+        result += this.print(child, indent + "  ");
+      }
+      return result;
+    }
+  }
+  
 
 
 // Function to display the output
