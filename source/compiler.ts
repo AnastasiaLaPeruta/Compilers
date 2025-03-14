@@ -329,10 +329,12 @@ class Parser {
         const token = this.tokens[this.current];
         if (token && token.type === expected) {
             // add node to CST
+            this.cst.addNode("leaf", token.lexeme);
+            // increase the token index
             this.current++;
         } else {
             // report error with details
-            throw new Error(`Expected ${expected} but got ${token?.lexeme} at line ${token?.line}`);
+            throw new Error(`PARSER ERROR: Expected ${expected} but got ${token ? token.lexeme: "EOF"} at line ${token?.line}`);
         }
     }
 }
