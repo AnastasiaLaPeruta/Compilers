@@ -42,7 +42,8 @@ function lexer() {
                     const parser = new Parser(tokens);
                     const result = parser.parse();
                     compileOutput += result.output;
-                    // display the CST if no errors occurred
+                    // Display the CST if no errors occurred:
+                    compileOutput += "\nCST for program:\n" + result.tree.print();
                 }
                 else{ // if any errors present
                     compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
