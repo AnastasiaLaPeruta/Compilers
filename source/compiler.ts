@@ -257,7 +257,7 @@ function lexer() {
             else if (+line[charIndex] == 0 || +line[charIndex] == 1 || +line[charIndex] == 2 || +line[charIndex] == 3 || +line[charIndex] == 4
                  || +line[charIndex] == 5 || +line[charIndex] == 6 || +line[charIndex] == 7 || +line[charIndex] == 8 || +line[charIndex] == 9
             ){
-                tokens.push({ type: "DIGIT", lexeme: "${line[charIndex]}", line: lineNumber + 1, column: charIndex + 1 });
+                tokens.push({ type: "DIGIT", lexeme: line[charIndex], line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - digit [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
             }
 
