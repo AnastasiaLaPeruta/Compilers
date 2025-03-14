@@ -107,7 +107,14 @@ function processInput() {
                         charIndex++; // Continue scanning inside ""
                     }
                     if (quoteClosed)
-                        break; // Exit loop if `"` was found
+                        // if quote found a different line, must throw an error
+                        if (lineNumber > quoteStartLine) {
+                            compileOutput += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${quoteStartLine}. Lexing terminated due to fatal error. End of " must be on same line as start.\n`;
+                            compileOutput += `Error Lexer - Lex failed with ${errors + 1} errors\n\n`;
+                            compileCode(compileOutput); // Output immediately
+                            return; // **STOP all further processing**
+                        }
+                    break; // Exit loop if `"` was found
                     lineNumber++; // Move to the next line
                     charIndex = 0; // Reset char position for new line
                 }
