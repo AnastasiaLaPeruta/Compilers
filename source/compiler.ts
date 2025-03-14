@@ -39,7 +39,10 @@ function lexer() {
                 compileOutput += `DEBUG Lexer -  EOP [ $ ] found on line ${lineNumber + 1}\n`;
                 if (errors == 0){ // if no errors
                     compileOutput += `INFO Lexer - Lex completed with  ${errors} errors\n\n`;
-                    parse(); // Call parse function if no errors
+                    const parser = new Parser(tokens);
+                    const result = parser.parse();
+                    compileOutput += result.output;
+                    // display the CST if no errors occurred
                 }
                 else{ // if any errors present
                     compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
