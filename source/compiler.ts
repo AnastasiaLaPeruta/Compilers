@@ -9,6 +9,7 @@ function processInput() {
     let charList: string[] = [];    // Creates array
     let compileOutput = "";
     let errors = 0;
+    compileOutput += 'DEBUG: Running in verbose mode \n\n';
     let program = 1; // This will increment with each $ and print ending and then new program block
     compileOutput += `INFO Lexer - Lexing program ${program}...\n`;
 
