@@ -344,6 +344,200 @@ class Parser {
             throw new Error(`PARSER ERROR: Expected ${expected} but got ${token ? token.lexeme: "EOF"} at line ${token?.line}`);
         }
     }
+
+    // Block ::= { StatementList }
+    private parseBlock(): void {
+        this.output += "PARSER --> parseBlock()\n";
+        this.cst.addNode("branch", "Block");
+        this.match("LBRACE");
+        this.parseStatementList();
+        this.match("RBRACE");
+        this.cst.moveUp();
+    }
+
+    // StatementList ::= Statement StatementList | ε
+    private parseStatementList(): void {
+        this.output += "PARSER --> parseStatementList()\n";
+        this.cst.addNode("branch", "StatementList");
+        const token = this.peekToken();
+        if (token && (token.type === "RBRACE" || token.type === "EOP")) {
+            // Epsilon production
+            this.cst.addNode("leaf", "ε");
+        } else {
+            this.parseStatement();
+            this.parseStatementList();
+        }
+        this.cst.moveUp();
+    }
+
+    // Statement ::= PrintStatement | AssignmentStatement | VarDecl | WhileStatement | IfStatement | Block
+    private parseStatement(): void {
+        this.output += "PARSER --> parseStatement()\n";
+        this.cst.addNode("branch", "Statement");
+        const token = this.peekToken();
+        if (!token) {
+            throw new Error("PARSER ERROR: Unexpected end of input in parseStatement");
+        }
+        if (token.type === "PRINT") {
+            this.parsePrintStatement();
+        } else if (token.type === "IFSTATEMENT") {
+            this.parseIfStatement();
+        } else if (token.type === "WHILE") {
+            this.parseWhileStatement();
+        } else if (token.type === "ITYPE") {
+            this.parseVarDecl();
+        } else if (token.type === "ID") {
+            this.parseAssignmentStatement();
+        } else if (token.type === "LBRACE") {
+            this.parseBlock();
+        } else {
+            throw new Error(`PARSER ERROR: Unexpected token ${token.lexeme} at line ${token.line} in parseStatement`);
+        }
+        this.cst.moveUp();
+    }
+
+    // PrintStatement ::= print ( Expr )
+    private parsePrintStatement(): void {
+        this.output += "PARSER --> parsePrintStatement()\n";
+        this.cst.addNode("branch", "PrintStatement");
+        this.match("PRINT");
+        this.match("LPAREN");
+        this.parseExpr();
+        this.match("RPAREN");
+        this.cst.moveUp();
+    }
+
+    // AssignmentStatement ::= ID = Expr
+    private parseAssignmentStatement(): void {
+        this.output += "PARSER --> parseAssignmentStatement()\n";
+        this.cst.addNode("branch", "AssignmentStatement");
+        this.match("ID");
+        this.match("ASSIGN_OP");
+        this.parseExpr();
+        this.cst.moveUp();
+    }
+
+    // VarDecl ::= ITYPE ID
+    private parseVarDecl(): void {
+        this.output += "PARSER --> parseVarDecl()\n";
+        this.cst.addNode("branch", "VarDecl");
+        this.match("ITYPE");
+        this.match("ID");
+        this.cst.moveUp();
+    }
+
+    // WhileStatement ::= while BooleanExpr Block
+    private parseWhileStatement(): void {
+        this.output += "PARSER --> parseWhileStatement()\n";
+        this.cst.addNode("branch", "WhileStatement");
+        this.match("WHILE");
+        this.parseBooleanExpr();
+        this.parseBlock();
+        this.cst.moveUp();
+    }
+
+    // IfStatement ::= if BooleanExpr Block
+    private parseIfStatement(): void {
+        this.output += "PARSER --> parseIfStatement()\n";
+        this.cst.addNode("branch", "IfStatement");
+        this.match("IFSTATEMENT");
+        this.parseBooleanExpr();
+        this.parseBlock();
+        this.cst.moveUp();
+    }
+
+    // Expr ::= IntExpr | StringExpr | BooleanExpr | ID
+    private parseExpr(): void {
+        this.output += "PARSER --> parseExpr()\n";
+        this.cst.addNode("branch", "Expr");
+        const token = this.peekToken();
+        if (!token) {
+            throw new Error("PARSER ERROR: Unexpected end of input in parseExpr");
+        }
+        if (token.type === "DIGIT") {
+            this.parseIntExpr();
+        } else if (token.type === "LQUOTE") {
+            this.parseStringExpr();
+        } else if (token.type === "LPAREN") {
+            this.parseBooleanExpr();
+        } else if (token.type === "ID") {
+            this.match("ID");
+        } else {
+            throw new Error(`PARSER ERROR: Unexpected token ${token.lexeme} at line ${token.line} in parseExpr`);
+        }
+        this.cst.moveUp();
+    }
+
+    // IntExpr ::= DIGIT [INTOP Expr]?
+    private parseIntExpr(): void {
+        this.output += "PARSER --> parseIntExpr()\n";
+        this.cst.addNode("branch", "IntExpr");
+        this.match("DIGIT");
+        const token = this.peekToken();
+        if (token && token.type === "INTOP") {
+            this.match("INTOP");
+            this.parseExpr();
+        }
+        this.cst.moveUp();
+    }
+
+    // StringExpr ::= " CharList "
+    private parseStringExpr(): void {
+        this.output += "PARSER --> parseStringExpr()\n";
+        this.cst.addNode("branch", "StringExpr");
+        this.match("LQUOTE");
+        this.parseCharList();
+        this.match("RQUOTE");
+        this.cst.moveUp();
+    }
+
+    // BooleanExpr ::= ( Expr BoolOp Expr ) | BOOLVALT | BOOLVALF
+    private parseBooleanExpr(): void {
+        this.output += "PARSER --> parseBooleanExpr()\n";
+        this.cst.addNode("branch", "BooleanExpr");
+        const token = this.peekToken();
+        if (token && token.type === "LPAREN") {
+            this.match("LPAREN");
+            this.parseExpr();
+            this.parseBoolOp();
+            this.parseExpr();
+            this.match("RPAREN");
+        } else if (token && (token.type === "BOOLVALT" || token.type === "BOOLVALF")) {
+            this.match(token.type);
+        } else {
+            throw new Error(`PARSER ERROR: Expected BooleanExpr but got ${token ? token.lexeme : "EOF"} at line ${token?.line}`);
+        }
+        this.cst.moveUp();
+    }
+
+    // BoolOp ::= BOOL_EQUAL | BOOL_INEQUAL
+    private parseBoolOp(): void {
+        this.output += "PARSER --> parseBoolOp()\n";
+        this.cst.addNode("branch", "BoolOp");
+        const token = this.peekToken();
+        if (token && (token.type === "BOOL_EQUAL" || token.type === "BOOL_INEQUAL")) {
+            this.match(token.type);
+        } else {
+            throw new Error(`PARSER ERROR: Expected boolean operator but got ${token ? token.lexeme : "EOF"} at line ${token?.line}`);
+        }
+        this.cst.moveUp();
+    }
+
+    // CharList ::= CHAR CharList | ε
+    private parseCharList(): void {
+        this.output += "PARSER --> parseCharList()\n";
+        this.cst.addNode("branch", "CharList");
+        const token = this.peekToken();
+        if (token && token.type === "CHAR") {
+            this.match("CHAR");
+            this.parseCharList();
+        } else {
+            // epsilon production
+            this.cst.addNode("leaf", "ε");
+        }
+        this.cst.moveUp();
+    }
+
 }
 
 // Represents a node in the CST
