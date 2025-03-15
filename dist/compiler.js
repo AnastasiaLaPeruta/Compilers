@@ -1,5 +1,4 @@
 // ChatGPT gave initial suggestion for tracking the line and position number of the input this way, also utilized for parser
-var _a;
 let tokens = [];
 function lexer() {
     const inputElement = document.getElementById("userInput");
@@ -526,6 +525,23 @@ function compileCode(compileOutput) {
     const outputElement = document.getElementById("output");
     outputElement.value = compileOutput; // Display compiled output
 }
-// Attach event listener correctly
-(_a = document.getElementById("compile-btn")) === null || _a === void 0 ? void 0 : _a.addEventListener("click", lexer);
+// Ensure the DOM is fully loaded before attaching the event listener, suggested by ChatGPT
+document.addEventListener("DOMContentLoaded", () => {
+    const compileBtn = document.getElementById("compile-btn");
+    if (!compileBtn) {
+        console.error("Compile button not found! Check that the id is 'compile-btn' in your HTML.");
+        return;
+    }
+    compileBtn.addEventListener("click", () => {
+        try {
+            // Reset the tokens array (if needed) at the start of each compile.
+            tokens = [];
+            lexer();
+        }
+        catch (err) {
+            console.error("Compilation error:", err);
+            compileCode("Compilation error: " + err);
+        }
+    });
+});
 //# sourceMappingURL=compiler.js.map
