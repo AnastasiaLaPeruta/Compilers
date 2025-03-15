@@ -1,5 +1,6 @@
+// ChatGPT gave initial suggestion for tracking the line and position number of the input this way, also utilized for parser
 var _a;
-// ChatGPT gave initial suggestion for tracking the line and position number of the input this way
+let tokens = [];
 function lexer() {
     const inputElement = document.getElementById("userInput");
     const text = inputElement.value; // Get text from textarea
@@ -21,10 +22,15 @@ function lexer() {
             // Detect start of a token
             if (line[charIndex] === "$") {
                 // Increment program number, print end and begin of program block and break out of loop
+                tokens.push({ type: "EOP", lexeme: "$", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer -  EOP [ $ ] found on line ${lineNumber + 1}\n`;
                 if (errors == 0) { // if no errors
                     compileOutput += `INFO Lexer - Lex completed with  ${errors} errors\n\n`;
-                    parser(); // Call parser if no errors
+                    const parser = new Parser(tokens);
+                    const result = parser.parse();
+                    compileOutput += result.output;
+                    // Display the CST if no errors occurred:
+                    compileOutput += "\nCST for program:\n" + result.tree.print();
                 }
                 else { // if any errors present
                     compileOutput += `Error Lexer - Lex failed with  ${errors} error(s)\n\n`;
@@ -42,9 +48,11 @@ function lexer() {
                 }
             }
             else if (line[charIndex] === "{") {
+                tokens.push({ type: "LBRACE", lexeme: "{", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line ${lineNumber + 1}\n`;
             }
             else if (line[charIndex] === "}") {
+                tokens.push({ type: "RBRACE", lexeme: "}", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - CLOSE_BLOCK [ } ] found on line ${lineNumber + 1}\n`;
             }
             //ChatGPT provided this method rather than the indefinite loop I realized I had that did not report unterminated comment error
@@ -78,16 +86,20 @@ function lexer() {
             // print check
             else if (line.substring(charIndex, charIndex + 5) === "print") {
                 charIndex += 4; // Move past `print`
+                tokens.push({ type: "PRINT", lexeme: "print", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - PRINT [ print ] found on line ${lineNumber + 1}\n`;
             }
             else if (line[charIndex] == "=" && line[charIndex + 1] == "=") {
+                tokens.push({ type: "BOOL_EQUAL", lexeme: "==", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - BOOL_EQUAL [ == ] found on line ${lineNumber + 1}\n`;
                 charIndex++;
             }
             else if (line[charIndex] == "=") { // don't have to worry about == because it checks for that before this case
+                tokens.push({ type: "ASSIGN_OP", lexeme: "=", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - ASSIGN_OP [ = ] found on line ${lineNumber + 1}\n`;
             }
             else if (line[charIndex] == "!" && line[charIndex + 1] == "=") {
+                tokens.push({ type: "BOOL_INEQUAL", lexeme: "!=", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - BOOL_INEQUAL [ != ] found on line ${lineNumber + 1}\n`;
                 charIndex++;
             }
@@ -96,17 +108,20 @@ function lexer() {
                 let quoteClosed = false; // Track if `"` is found
                 let quoteStartLine = lineNumber + 1; // Store where `"` starts
                 charIndex++; // Move past `"`
+                tokens.push({ type: "LQUOTE", lexeme: '"', line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - StringExpr [ start " ] found on line ${lineNumber + 1}\n`;
                 while (lineNumber < lines.length) { // Loop through lines
                     while (charIndex < lines[lineNumber].length) { // Loop through characters
                         if (lines[lineNumber][charIndex] === '"') {
                             quoteClosed = true; // Found closing `"`
+                            tokens.push({ type: "RQUOTE", lexeme: '"', line: lineNumber + 1, column: charIndex + 1 });
                             compileOutput += `DEBUG Lexer - StringExpr [ end " ] found on line ${lineNumber + 1}\n`;
                             break;
                         }
                         // prints out each character within the quotes only if it is a space or lowercase a-z
                         if (line[charIndex] >= "a" && line[charIndex] <= "z" || line[charIndex] == " ") {
-                            compileOutput += `DEBUG Lexer - char [ ${lines[lineNumber][charIndex]} ] found on line ${lineNumber + 1}\n`;
+                            tokens.push({ type: "CHAR", lexeme: line[charIndex], line: lineNumber + 1, column: charIndex + 1 });
+                            compileOutput += `DEBUG Lexer - Char [ ${lines[lineNumber][charIndex]} ] found on line ${lineNumber + 1}\n`;
                         }
                         else {
                             compileOutput += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${line[charIndex]} Only lowercase letters a through z and spaces are allowed in strings \n`;
@@ -137,16 +152,20 @@ function lexer() {
                 }
             }
             else if (line[charIndex] === '(') {
+                tokens.push({ type: "LPAREN", lexeme: "(", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - StartParen [ ( ] found on line ${lineNumber + 1}\n`;
             }
             else if (line[charIndex] === ')') {
+                tokens.push({ type: "RPAREN", lexeme: ")", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - CloseParen [ ) ] found on line ${lineNumber + 1}\n`;
             }
             else if (line[charIndex] == "+") {
+                tokens.push({ type: "INTOP", lexeme: "+", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - intop [ + ] found on line ${lineNumber + 1}\n`;
             }
             else if (line[charIndex] == "w" && line[charIndex + 1] == "h" && line[charIndex + 2] == "i" && line[charIndex + 3] == "l" &&
                 line[charIndex + 4] == "e") {
+                tokens.push({ type: "WHILE", lexeme: "while", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - WhileStatement [ while ] found on line ${lineNumber + 1}\n`;
                 charIndex += 4;
             }
@@ -157,23 +176,28 @@ function lexer() {
             }
             else if (line[charIndex] == "b" && line[charIndex + 1] == "o" && line[charIndex + 2] == "o" && line[charIndex + 3] == "l" &&
                 line[charIndex + 4] == "e" && line[charIndex + 5] == "a" && line[charIndex + 6] == "n") {
+                tokens.push({ type: "ITYPE", lexeme: "boolean", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - I_TYPE [ boolean ] found on line ${lineNumber + 1}\n`;
                 charIndex += 6;
             }
             else if (line[charIndex] == "i" && line[charIndex + 1] == "n" && line[charIndex + 2] == "t") {
+                tokens.push({ type: "ITYPE", lexeme: "int", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - I_TYPE [ int ] found on line ${lineNumber + 1}\n`;
                 charIndex += 2;
             }
             else if (line[charIndex] == "i" && line[charIndex + 1] == "f") {
+                tokens.push({ type: "IFSTATEMENT", lexeme: "if", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - IfStatement [ if ] found on line ${lineNumber + 1}\n`;
                 charIndex += 1;
             }
             else if (line[charIndex] == "f" && line[charIndex + 1] == "a" && line[charIndex + 2] == "l" && line[charIndex + 3] == "s" &&
                 line[charIndex + 4] == "e") {
+                tokens.push({ type: "BOOLVALF", lexeme: "false", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - boolval_F [ false ] found on line ${lineNumber + 1}\n`;
                 charIndex += 4;
             }
             else if (line[charIndex] == "t" && line[charIndex + 1] == "r" && line[charIndex + 2] == "u" && line[charIndex + 3] == "e") {
+                tokens.push({ type: "BOOLVALT", lexeme: "true", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - boolval_T [ true ] found on line ${lineNumber + 1}\n`;
                 charIndex += 3;
             }
@@ -183,10 +207,12 @@ function lexer() {
             // any int 0-9
             else if (+line[charIndex] == 0 || +line[charIndex] == 1 || +line[charIndex] == 2 || +line[charIndex] == 3 || +line[charIndex] == 4
                 || +line[charIndex] == 5 || +line[charIndex] == 6 || +line[charIndex] == 7 || +line[charIndex] == 8 || +line[charIndex] == 9) {
+                tokens.push({ type: "DIGIT", lexeme: line[charIndex], line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - digit [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
             }
             else if (line[charIndex] >= "a" && line[charIndex] <= "z") { // ChatGPT reminded me of how to make sure value was a letter between a and z
                 // This character is a lowercase letter
+                tokens.push({ type: "ID", lexeme: line[charIndex], line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer - ID [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
             }
             // else we get increment error for an invalid token
@@ -210,9 +236,290 @@ function lexer() {
     }
     compileCode(compileOutput); // Pass final output as parameter
 }
-// Parser function
-function parser() {
-    //
+class Parser {
+    constructor(tokens) {
+        this.current = 0;
+        this.output = "";
+        this.tokens = tokens;
+        this.cst = new CST();
+    }
+    // Helper to peek at the current token without consuming it
+    peekToken() {
+        return this.current < this.tokens.length ? this.tokens[this.current] : null;
+    }
+    // Starts parsing the program
+    parse() {
+        this.output += "PARSER --> parseProgram()\n";
+        this.parseProgram();
+        return { output: this.output, tree: this.cst, error: null };
+    }
+    parseProgram() {
+        this.cst.addNode("branch", "Program");
+        this.parseBlock();
+        // Assume matchToken checks that the current token is an EOP marker and advances the token index
+        this.match("EOP");
+        this.cst.moveUp();
+        // build CST node for Program
+        // call parseBlock(), then expect the EOP token
+    }
+    // Implement parseBlock, parseStatementList, etc.
+    match(expected) {
+        const token = this.tokens[this.current];
+        if (token && token.type === expected) {
+            // add node to CST
+            this.cst.addNode("leaf", token.lexeme);
+            // increase the token index
+            this.current++;
+        }
+        else {
+            // report error with details
+            throw new Error(`PARSER ERROR: Expected ${expected} but got ${token ? token.lexeme : "EOF"} at line ${token === null || token === void 0 ? void 0 : token.line}`);
+        }
+    }
+    // Block ::= { StatementList }
+    parseBlock() {
+        this.output += "PARSER --> parseBlock()\n";
+        this.cst.addNode("branch", "Block");
+        this.match("LBRACE");
+        this.parseStatementList();
+        this.match("RBRACE");
+        this.cst.moveUp();
+    }
+    // StatementList ::= Statement StatementList | ε
+    parseStatementList() {
+        this.output += "PARSER --> parseStatementList()\n";
+        this.cst.addNode("branch", "StatementList");
+        const token = this.peekToken();
+        if (token && (token.type === "RBRACE" || token.type === "EOP")) {
+            // Epsilon production
+            this.cst.addNode("leaf", "ε");
+        }
+        else {
+            this.parseStatement();
+            this.parseStatementList();
+        }
+        this.cst.moveUp();
+    }
+    // Statement ::= PrintStatement | AssignmentStatement | VarDecl | WhileStatement | IfStatement | Block
+    parseStatement() {
+        this.output += "PARSER --> parseStatement()\n";
+        this.cst.addNode("branch", "Statement");
+        const token = this.peekToken();
+        if (!token) {
+            throw new Error("PARSER ERROR: Unexpected end of input in parseStatement");
+        }
+        if (token.type === "PRINT") {
+            this.parsePrintStatement();
+        }
+        else if (token.type === "IFSTATEMENT") {
+            this.parseIfStatement();
+        }
+        else if (token.type === "WHILE") {
+            this.parseWhileStatement();
+        }
+        else if (token.type === "ITYPE") {
+            this.parseVarDecl();
+        }
+        else if (token.type === "ID") {
+            this.parseAssignmentStatement();
+        }
+        else if (token.type === "LBRACE") {
+            this.parseBlock();
+        }
+        else {
+            throw new Error(`PARSER ERROR: Unexpected token ${token.lexeme} at line ${token.line} in parseStatement`);
+        }
+        this.cst.moveUp();
+    }
+    // PrintStatement ::= print ( Expr )
+    parsePrintStatement() {
+        this.output += "PARSER --> parsePrintStatement()\n";
+        this.cst.addNode("branch", "PrintStatement");
+        this.match("PRINT");
+        this.match("LPAREN");
+        this.parseExpr();
+        this.match("RPAREN");
+        this.cst.moveUp();
+    }
+    // AssignmentStatement ::= ID = Expr
+    parseAssignmentStatement() {
+        this.output += "PARSER --> parseAssignmentStatement()\n";
+        this.cst.addNode("branch", "AssignmentStatement");
+        this.match("ID");
+        this.match("ASSIGN_OP");
+        this.parseExpr();
+        this.cst.moveUp();
+    }
+    // VarDecl ::= ITYPE ID
+    parseVarDecl() {
+        this.output += "PARSER --> parseVarDecl()\n";
+        this.cst.addNode("branch", "VarDecl");
+        this.match("ITYPE");
+        this.match("ID");
+        this.cst.moveUp();
+    }
+    // WhileStatement ::= while BooleanExpr Block
+    parseWhileStatement() {
+        this.output += "PARSER --> parseWhileStatement()\n";
+        this.cst.addNode("branch", "WhileStatement");
+        this.match("WHILE");
+        this.parseBooleanExpr();
+        this.parseBlock();
+        this.cst.moveUp();
+    }
+    // IfStatement ::= if BooleanExpr Block
+    parseIfStatement() {
+        this.output += "PARSER --> parseIfStatement()\n";
+        this.cst.addNode("branch", "IfStatement");
+        this.match("IFSTATEMENT");
+        this.parseBooleanExpr();
+        this.parseBlock();
+        this.cst.moveUp();
+    }
+    // Expr ::= IntExpr | StringExpr | BooleanExpr | ID
+    parseExpr() {
+        this.output += "PARSER --> parseExpr()\n";
+        this.cst.addNode("branch", "Expr");
+        const token = this.peekToken();
+        if (!token) {
+            throw new Error("PARSER ERROR: Unexpected end of input in parseExpr");
+        }
+        if (token.type === "DIGIT") {
+            this.parseIntExpr();
+        }
+        else if (token.type === "LQUOTE") {
+            this.parseStringExpr();
+        }
+        else if (token.type === "LPAREN") {
+            this.parseBooleanExpr();
+        }
+        else if (token.type === "ID") {
+            this.match("ID");
+        }
+        else {
+            throw new Error(`PARSER ERROR: Unexpected token ${token.lexeme} at line ${token.line} in parseExpr`);
+        }
+        this.cst.moveUp();
+    }
+    // IntExpr ::= DIGIT [INTOP Expr]?
+    parseIntExpr() {
+        this.output += "PARSER --> parseIntExpr()\n";
+        this.cst.addNode("branch", "IntExpr");
+        this.match("DIGIT");
+        const token = this.peekToken();
+        if (token && token.type === "INTOP") {
+            this.match("INTOP");
+            this.parseExpr();
+        }
+        this.cst.moveUp();
+    }
+    // StringExpr ::= " CharList "
+    parseStringExpr() {
+        this.output += "PARSER --> parseStringExpr()\n";
+        this.cst.addNode("branch", "StringExpr");
+        this.match("LQUOTE");
+        this.parseCharList();
+        this.match("RQUOTE");
+        this.cst.moveUp();
+    }
+    // BooleanExpr ::= ( Expr BoolOp Expr ) | BOOLVALT | BOOLVALF
+    parseBooleanExpr() {
+        this.output += "PARSER --> parseBooleanExpr()\n";
+        this.cst.addNode("branch", "BooleanExpr");
+        const token = this.peekToken();
+        if (token && token.type === "LPAREN") {
+            this.match("LPAREN");
+            this.parseExpr();
+            this.parseBoolOp();
+            this.parseExpr();
+            this.match("RPAREN");
+        }
+        else if (token && (token.type === "BOOLVALT" || token.type === "BOOLVALF")) {
+            this.match(token.type);
+        }
+        else {
+            throw new Error(`PARSER ERROR: Expected BooleanExpr but got ${token ? token.lexeme : "EOF"} at line ${token === null || token === void 0 ? void 0 : token.line}`);
+        }
+        this.cst.moveUp();
+    }
+    // BoolOp ::= BOOL_EQUAL | BOOL_INEQUAL
+    parseBoolOp() {
+        this.output += "PARSER --> parseBoolOp()\n";
+        this.cst.addNode("branch", "BoolOp");
+        const token = this.peekToken();
+        if (token && (token.type === "BOOL_EQUAL" || token.type === "BOOL_INEQUAL")) {
+            this.match(token.type);
+        }
+        else {
+            throw new Error(`PARSER ERROR: Expected boolean operator but got ${token ? token.lexeme : "EOF"} at line ${token === null || token === void 0 ? void 0 : token.line}`);
+        }
+        this.cst.moveUp();
+    }
+    // CharList ::= CHAR CharList | ε
+    parseCharList() {
+        this.output += "PARSER --> parseCharList()\n";
+        this.cst.addNode("branch", "CharList");
+        const token = this.peekToken();
+        if (token && token.type === "CHAR") {
+            this.match("CHAR");
+            this.parseCharList();
+        }
+        else {
+            // epsilon production
+            this.cst.addNode("leaf", "ε");
+        }
+        this.cst.moveUp();
+    }
+}
+// Represents a node in the CST
+class CSTNode {
+    constructor(label) {
+        this.label = label;
+        this.children = [];
+        this.parent = null;
+    }
+}
+// Represents the entire CST
+class CST {
+    constructor() {
+        this.root = null;
+        this.current = null;
+    }
+    // Add a node to the CST, kind indicates whether it is a branch (non-terminal) or a leaf (terminal). For branches, we update the current node.
+    addNode(kind, label) {
+        const newNode = new CSTNode(label);
+        if (this.root === null) {
+            // This is the root of the tree
+            this.root = newNode;
+            this.current = newNode;
+        }
+        else {
+            if (this.current) {
+                newNode.parent = this.current;
+                this.current.children.push(newNode);
+            }
+            // Only change the current node if it is a branch
+            if (kind === "branch") {
+                this.current = newNode;
+            }
+        }
+    }
+    // After finishing a non-terminal rule, move up to the parent node
+    moveUp() {
+        if (this.current && this.current.parent) {
+            this.current = this.current.parent;
+        }
+    }
+    // A helper function to print the tree as a formatted string (for display)
+    print(node = this.root, indent = "") {
+        if (!node)
+            return "";
+        let result = indent + `<${node.label}>\n`;
+        for (const child of node.children) {
+            result += this.print(child, indent + "  ");
+        }
+        return result;
+    }
 }
 // Function to display the output
 function compileCode(compileOutput) {
