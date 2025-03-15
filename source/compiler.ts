@@ -609,5 +609,23 @@ function compileCode(compileOutput: string) {
     outputElement.value = compileOutput; // Display compiled output
 }
 
-// Attach event listener correctly
-document.getElementById("compile-btn")?.addEventListener("click", lexer);
+// Ensure the DOM is fully loaded before attaching the event listener, suggested by ChatGPT
+document.addEventListener("DOMContentLoaded", () => {
+    const compileBtn = document.getElementById("compile-btn");
+    if (!compileBtn) {
+      console.error("Compile button not found! Check that the id is 'compile-btn' in your HTML.");
+      return;
+    }
+    
+    compileBtn.addEventListener("click", () => {
+      try {
+        // Reset the tokens array (if needed) at the start of each compile.
+        tokens = [];
+        lexer();
+      } catch (err) {
+        console.error("Compilation error:", err);
+        compileCode("Compilation error: " + err);
+      }
+    });
+  });
+  
