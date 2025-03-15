@@ -42,7 +42,7 @@ function lexer() {
                 charList.length = 0; // end of program means end of token
                 // executes only if there is more in program (either more lines or more characters on that final line)
                 if (line.substring(charIndex + 1).trim().length > 0 || // Non-space chars after `$`
-                    lines.slice(lineNumber + 1).some(l => l.trim().length > 0)) { // Any remaining non-empty lines? ChatGPT helped turn this idea into code that accurately checks these conditions
+                    lines.slice(lineNumber + 1).some(l => l.trim().length > 0)) { // Any remaining non-empty lines?
                     compileOutput += `INFO Lexer - Lexing program ${program}...\n`;
                 }
             }
@@ -525,6 +525,85 @@ function compileCode(compileOutput) {
     const outputElement = document.getElementById("output");
     outputElement.value = compileOutput; // Display compiled output
 }
+// This function encapsulates your lexing loop for a single program (the text before the '$' marker).
+function lexProgram(progText) {
+    tokens = [];
+    let compileOutput = "DEBUG: Running in verbose mode \n\n";
+    let errors = 0;
+    const lines = progText.split("\n");
+    let position = 0;
+    let charList = [];
+    // Use your existing lexing loop here.
+    for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+        const line = lines[lineNumber];
+        for (let charIndex = 0; charIndex < line.length; charIndex++) {
+            console.log(`  Character ${charIndex + 1} (global position ${position}): '${line[charIndex]}'`);
+            charList.push(line[charIndex]);
+            if (line[charIndex] === "{") {
+                tokens.push({ type: "LBRACE", lexeme: "{", line: lineNumber + 1, column: charIndex + 1 });
+                compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line ${lineNumber + 1}\n`;
+            }
+            else if (line[charIndex] === "}") {
+                tokens.push({ type: "RBRACE", lexeme: "}", line: lineNumber + 1, column: charIndex + 1 });
+                compileOutput += `DEBUG Lexer - CLOSE_BLOCK [ } ] found on line ${lineNumber + 1}\n`;
+            }
+            else if (line.substring(charIndex, charIndex + 5) === "print") {
+                charIndex += 4;
+                tokens.push({ type: "PRINT", lexeme: "print", line: lineNumber + 1, column: charIndex + 1 });
+                compileOutput += `DEBUG Lexer - PRINT [ print ] found on line ${lineNumber + 1}\n`;
+            }
+            else if (line[charIndex] >= "a" && line[charIndex] <= "z") {
+                tokens.push({ type: "ID", lexeme: line[charIndex], line: lineNumber + 1, column: charIndex + 1 });
+                compileOutput += `DEBUG Lexer - ID [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
+            }
+            else {
+                errors++;
+                compileOutput += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${line[charIndex]}\n`;
+            }
+            position++;
+        }
+        charList.length = 0;
+        position++;
+    }
+    return { tokens: tokens, output: compileOutput, errors: errors };
+}
+// Splits the input into programs (delimited by '$'), lexes each, and if valid, parses it and builds a CST.
+function processPrograms() {
+    const inputElement = document.getElementById("userInput");
+    const text = inputElement.value.trim();
+    if (!text.endsWith("$")) {
+        compileCode(`ERROR: Last character of input must be "$".\n`);
+        return;
+    }
+    // Split the input into separate programs.
+    const programs = text.split("$").map(p => p.trim()).filter(p => p.length > 0);
+    let finalOutput = "DEBUG: Running in verbose mode \n\n";
+    let programNumber = 1;
+    for (const progText of programs) {
+        // Lex this program.
+        const lexResult = lexProgram(progText);
+        let compileOutput = `INFO Lexer - Lexing program ${programNumber}...\n` + lexResult.output;
+        if (lexResult.errors > 0) {
+            compileOutput += `Error Lexer - Lex failed with ${lexResult.errors} error(s)\n\n`;
+        }
+        else {
+            compileOutput += `INFO Lexer - Lex completed with ${lexResult.errors} errors\n\n`;
+            try {
+                const parser = new Parser(lexResult.tokens);
+                const result = parser.parse();
+                compileOutput += result.output;
+                compileOutput += "\nCST for program " + programNumber + ":\n" + result.tree.print();
+            }
+            catch (parseError) {
+                compileOutput += "\nPARSER ERROR: " + parseError;
+                console.error(parseError);
+            }
+        }
+        finalOutput += compileOutput + "\n";
+        programNumber++;
+    }
+    compileCode(finalOutput);
+}
 // Ensure the DOM is fully loaded before attaching the event listener, suggested by ChatGPT
 document.addEventListener("DOMContentLoaded", () => {
     const compileBtn = document.getElementById("compile-btn");
@@ -534,9 +613,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     compileBtn.addEventListener("click", () => {
         try {
-            // Reset the tokens array (if needed) at the start of each compile.
-            tokens = [];
-            lexer();
+            // Instead of calling lexer(), now call processPrograms()
+            processPrograms();
         }
         catch (err) {
             console.error("Compilation error:", err);

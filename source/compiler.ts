@@ -56,7 +56,7 @@ function lexer() {
                 charList.length = 0; // end of program means end of token
                 // executes only if there is more in program (either more lines or more characters on that final line)
                 if (line.substring(charIndex + 1).trim().length > 0 ||  // Non-space chars after `$`
-                lines.slice(lineNumber + 1).some(l => l.trim().length > 0)){ // Any remaining non-empty lines? ChatGPT helped turn this idea into code that accurately checks these conditions
+                lines.slice(lineNumber + 1).some(l => l.trim().length > 0)){ // Any remaining non-empty lines?
                     compileOutput += `INFO Lexer - Lexing program ${program}...\n`;
                 }
             } 
@@ -545,62 +545,61 @@ class CSTNode {
     label: string;
     children: CSTNode[];
     parent: CSTNode | null;
-  
+
     constructor(label: string) {
-      this.label = label;
-      this.children = [];
-      this.parent = null;
+        this.label = label;
+        this.children = [];
+        this.parent = null;
     }
-  }
-  
-  // Represents the entire CST
-  class CST {
+}
+
+// Represents the entire CST
+class CST {
     root: CSTNode | null;
     current: CSTNode | null;
-  
+
     constructor() {
-      this.root = null;
-      this.current = null;
+        this.root = null;
+        this.current = null;
     }
-  
+
     // Add a node to the CST, kind indicates whether it is a branch (non-terminal) or a leaf (terminal). For branches, we update the current node.
     addNode(kind: "branch" | "leaf", label: string): void {
-      const newNode = new CSTNode(label);
-  
-      if (this.root === null) {
-        // This is the root of the tree
-        this.root = newNode;
-        this.current = newNode;
-      } else {
-        if (this.current) {
-          newNode.parent = this.current;
-          this.current.children.push(newNode);
+        const newNode = new CSTNode(label);
+
+        if (this.root === null) {
+            // This is the root of the tree
+            this.root = newNode;
+            this.current = newNode;
+        } else {
+            if (this.current) {
+                newNode.parent = this.current;
+                this.current.children.push(newNode);
+            }
+            // Only change the current node if it is a branch
+            if (kind === "branch") {
+                this.current = newNode;
+            }
         }
-        // Only change the current node if it is a branch
-        if (kind === "branch") {
-          this.current = newNode;
-        }
-      }
     }
-  
+
     // After finishing a non-terminal rule, move up to the parent node
     moveUp(): void {
-      if (this.current && this.current.parent) {
-        this.current = this.current.parent;
-      }
+        if (this.current && this.current.parent) {
+            this.current = this.current.parent;
+        }
     }
-  
+
     // A helper function to print the tree as a formatted string (for display)
     print(node: CSTNode | null = this.root, indent: string = ""): string {
-      if (!node) return "";
-      let result = indent + `<${node.label}>\n`;
-      for (const child of node.children) {
-        result += this.print(child, indent + "  ");
-      }
-      return result;
+        if (!node) return "";
+        let result = indent + `<${node.label}>\n`;
+        for (const child of node.children) {
+            result += this.print(child, indent + "  ");
+        }
+        return result;
     }
-  }
-  
+}
 
 
 // Function to display the output
@@ -608,6 +607,83 @@ function compileCode(compileOutput: string) {
     const outputElement = document.getElementById("output") as HTMLTextAreaElement;
     outputElement.value = compileOutput; // Display compiled output
 }
+
+// This function encapsulates your lexing loop for a single program (the text before the '$' marker).
+function lexProgram(progText: string): { tokens: Token[], output: string, errors: number } {
+    tokens = [];
+    let compileOutput = "DEBUG: Running in verbose mode \n\n";
+    let errors = 0;
+    const lines = progText.split("\n");
+    let position = 0;
+    let charList: string[] = [];
+    // Use your existing lexing loop here.
+    for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+        const line = lines[lineNumber];
+        for (let charIndex = 0; charIndex < line.length; charIndex++) {
+            console.log(`  Character ${charIndex + 1} (global position ${position}): '${line[charIndex]}'`);
+            charList.push(line[charIndex]);
+            if (line[charIndex] === "{") {
+                tokens.push({ type: "LBRACE", lexeme: "{", line: lineNumber + 1, column: charIndex + 1 });
+                compileOutput += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line ${lineNumber + 1}\n`;
+            } else if (line[charIndex] === "}") {
+                tokens.push({ type: "RBRACE", lexeme: "}", line: lineNumber + 1, column: charIndex + 1 });
+                compileOutput += `DEBUG Lexer - CLOSE_BLOCK [ } ] found on line ${lineNumber + 1}\n`;
+            } else if (line.substring(charIndex, charIndex + 5) === "print") {
+                charIndex += 4;
+                tokens.push({ type: "PRINT", lexeme: "print", line: lineNumber + 1, column: charIndex + 1 });
+                compileOutput += `DEBUG Lexer - PRINT [ print ] found on line ${lineNumber + 1}\n`;
+            } else if (line[charIndex] >= "a" && line[charIndex] <= "z") {
+                tokens.push({ type: "ID", lexeme: line[charIndex], line: lineNumber + 1, column: charIndex + 1 });
+                compileOutput += `DEBUG Lexer - ID [ ${line[charIndex]} ] found on line ${lineNumber + 1}\n`;
+            } else {
+                errors++;
+                compileOutput += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${line[charIndex]}\n`;
+            }
+            position++;
+        }
+        charList.length = 0;
+        position++;
+    }
+    return { tokens: tokens, output: compileOutput, errors: errors };
+}
+
+
+// Splits the input into programs (delimited by '$'), lexes each, and if valid, parses it and builds a CST.
+function processPrograms() {
+    const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
+    const text = inputElement.value.trim();
+    if (!text.endsWith("$")) {
+        compileCode(`ERROR: Last character of input must be "$".\n`);
+        return;
+    }
+    // Split the input into separate programs.
+    const programs = text.split("$").map(p => p.trim()).filter(p => p.length > 0);
+    let finalOutput = "DEBUG: Running in verbose mode \n\n";
+    let programNumber = 1;
+    for (const progText of programs) {
+        // Lex this program.
+        const lexResult = lexProgram(progText);
+        let compileOutput = `INFO Lexer - Lexing program ${programNumber}...\n` + lexResult.output;
+        if (lexResult.errors > 0) {
+            compileOutput += `Error Lexer - Lex failed with ${lexResult.errors} error(s)\n\n`;
+        } else {
+            compileOutput += `INFO Lexer - Lex completed with ${lexResult.errors} errors\n\n`;
+            try {
+                const parser = new Parser(lexResult.tokens);
+                const result = parser.parse();
+                compileOutput += result.output;
+                compileOutput += "\nCST for program " + programNumber + ":\n" + result.tree.print();
+            } catch (parseError) {
+                compileOutput += "\nPARSER ERROR: " + parseError;
+                console.error(parseError);
+            }
+        }
+        finalOutput += compileOutput + "\n";
+        programNumber++;
+    }
+    compileCode(finalOutput);
+}
+
 
 // Ensure the DOM is fully loaded before attaching the event listener, suggested by ChatGPT
 document.addEventListener("DOMContentLoaded", () => {
@@ -619,13 +695,11 @@ document.addEventListener("DOMContentLoaded", () => {
     
     compileBtn.addEventListener("click", () => {
       try {
-        // Reset the tokens array (if needed) at the start of each compile.
-        tokens = [];
-        lexer();
+        // Instead of calling lexer(), now call processPrograms()
+        processPrograms();
       } catch (err) {
         console.error("Compilation error:", err);
         compileCode("Compilation error: " + err);
       }
     });
-  });
-  
+});
