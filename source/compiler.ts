@@ -208,7 +208,7 @@ function lexProgram(progText: string): { tokens: Token[], output: string, errors
 // This function splits the input (which may contain multiple programs separated by "$"),
 // re-appends "$" to each program (so each ends with the EOP marker), lexes and then parses each.
 function processPrograms() {
-    let finalOutput = "";
+    let finalOutput = "DEBUG: Running in verbose mode \n\n";
     const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
     const text = inputElement.value;
     if (!text.trim().endsWith("$")) {
@@ -226,12 +226,9 @@ function processPrograms() {
     let programNumber = 1;
     for (const progText of programs) {
         const lexResult = lexProgram(progText);
-        finalOutput += `DEBUG: Running in verbose mode \n\n`;
         let compileOutput = `LEXER - Lexing program ${programNumber}...\n` + lexResult.output;
-        if (lexResult.errors > 0) {
-            compileOutput += `Error Lexer - Lex failed with ${lexResult.errors} error(s)\n\n`;
-        } else {
-            compileOutput += `LEXER - Lex completed with ${lexResult.errors} error(s)\n\n`;
+        // Do not add additional lexing completion/error messages, since lexResult.output already includes them.
+        if (lexResult.errors === 0) {
             const parserInstance = new Parser(lexResult.tokens);
             const result = parserInstance.parse();
             compileOutput += result.output;
