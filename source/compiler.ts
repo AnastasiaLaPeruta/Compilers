@@ -54,7 +54,6 @@ interface Token {
         }
         // --- Comments: skip everything between /* and */ ---
         else if (char === "/" && charIndex + 1 < line.length && line[charIndex + 1] === "*") {
-          output += `DEBUG Lexer - Comment start [ /* ] found on line ${globalLine}\n`;
           charIndex += 2; // Skip the "/*"
           let commentClosed = false;
           while (localLine < lines.length) {
