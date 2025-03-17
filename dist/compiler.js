@@ -10,7 +10,7 @@ function lexer() {
     let errors = 0;
     compileOutput += 'DEBUG: Running in verbose mode \n\n';
     let program = 1; // This will increment with each $ and print ending and then new program block
-    compileOutput += `INFO Lexer - Lexing program ${program}...\n`;
+    compileOutput += `LEXER - Lexing program ${program}...\n`;
     // Loops through all lines
     for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
         const line = lines[lineNumber];
@@ -24,7 +24,7 @@ function lexer() {
                 tokens.push({ type: "EOP", lexeme: "$", line: lineNumber + 1, column: charIndex + 1 });
                 compileOutput += `DEBUG Lexer -  EOP [ $ ] found on line ${lineNumber + 1}\n`;
                 if (errors == 0) { // if no errors
-                    compileOutput += `INFO Lexer - Lex completed with  ${errors} errors\n\n`;
+                    compileOutput += `LEXER - Lex completed with  ${errors} errors\n\n`;
                     const parser = new Parser(tokens);
                     const result = parser.parse();
                     compileOutput += result.output;
@@ -43,7 +43,7 @@ function lexer() {
                 // executes only if there is more in program (either more lines or more characters on that final line)
                 if (line.substring(charIndex + 1).trim().length > 0 || // Non-space chars after `$`
                     lines.slice(lineNumber + 1).some(l => l.trim().length > 0)) { // Any remaining non-empty lines?
-                    compileOutput += `INFO Lexer - Lexing program ${program}...\n`;
+                    compileOutput += `LEXER - Lexing program ${program}...\n`;
                 }
             }
             else if (line[charIndex] === "{") {
@@ -658,12 +658,12 @@ function processPrograms() {
     for (const progText of programs) {
         // Lex this program.
         const lexResult = lexProgram(progText);
-        let compileOutput = `INFO Lexer - Lexing program ${programNumber}...\n` + lexResult.output;
+        let compileOutput = `LEXER - Lexing program ${programNumber}...\n` + lexResult.output;
         if (lexResult.errors > 0) {
             compileOutput += `Error Lexer - Lex failed with ${lexResult.errors} error(s)\n\n`;
         }
         else {
-            compileOutput += `INFO Lexer - Lex completed with ${lexResult.errors} errors\n\n`;
+            compileOutput += `LEXER - Lex completed with ${lexResult.errors} errors\n\n`;
             const parser = new Parser(lexResult.tokens);
             const result = parser.parse();
             compileOutput += result.output;
