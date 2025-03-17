@@ -32,12 +32,34 @@ interface Token {
         const char = line[charIndex];
         console.log(`  Character ${charIndex + 1} (global position ${position}): '${char}'`);
   
-        // --- Check for End-of-Program marker ---
+        // Checks for EOP
         if (char === "$") {
-          tokens.push({ type: "EOP", lexeme: "$", line: globalLine, column: charIndex + 1 });
-          output += `DEBUG Lexer - EOP [ $ ] found on line ${globalLine}\n`;
-          continue;
-        }
+            tokens.push({ type: "EOP", lexeme: "$", line: globalLine, column: charIndex + 1 });
+            output += `DEBUG Lexer - EOP [ $ ] found on line ${globalLine}\n`;
+            // Warning 1: Check for extra consecutive '$'
+            let extraDollars = "";
+            let j = charIndex + 1;
+            while (j < line.length && line[j] === "$") {
+              extraDollars += "$";
+              j++;
+            }
+            if (extraDollars.length > 0) {
+              output += `WARNING Lexer - Warning: line ${globalLine} - Extra "${extraDollars}" detected. Program will continue to execute assuming you meant to do this...\n\n`;
+            }
+            // Warning 2: Check for extra non-whitespace characters after '$'
+            // Warning 2: Check for any extra characters after '$' (even if they are whitespace)
+            if (j < line.length) {
+                output += `WARNING Lexer - Warning: line ${globalLine} - Extra characters after "$" will be ignored.\n\n`;
+            }
+  
+            // Skip the rest of the line
+            charIndex = line.length; 
+            continue;
+          }
+          
+          
+        
+  
         // --- Punctuation and grouping ---
         else if (char === "{") {
           tokens.push({ type: "LBRACE", lexeme: "{", line: globalLine, column: charIndex + 1 });
@@ -54,36 +76,39 @@ interface Token {
         }
         // --- Comments: skip everything between /* and */ ---
         else if (char === "/" && charIndex + 1 < line.length && line[charIndex + 1] === "*") {
-          charIndex += 2; // Skip the "/*"
-          let commentClosed = false;
-          while (localLine < lines.length) {
-            while (charIndex < line.length - 1) {
-              if (line[charIndex] === "*" && line[charIndex + 1] === "/") {
-                commentClosed = true;
-                charIndex += 2; // Skip the "*/"
-                break;
+            charIndex += 2; // Skip the "/*"
+            let commentClosed = false;
+            let commentContent = "";
+            while (localLine < lines.length) {
+              while (charIndex < line.length - 1) {
+                if (line[charIndex] === "*" && line[charIndex + 1] === "/") {
+                  commentClosed = true;
+                  charIndex += 1; // Skip the "*/"
+                  break;
+                }
+                commentContent += line[charIndex];
+                charIndex++;
               }
-              charIndex++;
+              if (commentClosed) break;
+              localLine++;
+              if (localLine < lines.length) {
+                line = lines[localLine];
+                charIndex = 0;
+              }
             }
-            if (commentClosed) break;
-            localLine++;
-            if (localLine < lines.length) {
-              line = lines[localLine];
-              // update global line number accordingly
-              // Note: column resets to 0 for the new line.
-              charIndex = 0;
+            if (!commentClosed) {
+              output += `ERROR Lexer - Error: Unterminated comment starting on line ${globalLine}. Lexing terminated.\n`;
+              errors++;
+              output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+              break; // exit the current loop
             }
-          }
-          if (!commentClosed) {
-            output += `ERROR Lexer - Error: Unterminated comment starting on line ${globalLine}. Lexing terminated.\n`;
-            errors++;
-            output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-            break; // exit the current loop instead of returning immediately
+            // Warning: if the comment content is empty (or only whitespace), issue a warning.
+            if (commentContent.trim().length === 0) {
+              output += `WARNING Lexer - Warning: line ${globalLine} - Empty comment block detected.\n\n`;
+            }
+            continue; // Skip further processing inside comment.
           }
           
-          
-          continue; // Skip further processing inside comment.
-        }
         // --- Keywords and operators ---
         else if (line.substring(charIndex, charIndex + 5) === "print") {
           tokens.push({ type: "PRINT", lexeme: "print", line: globalLine, column: charIndex + 1 });
@@ -140,39 +165,39 @@ interface Token {
         }
         // --- String Expressions ---
         else if (char === '"') {
-          tokens.push({ type: "LQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
-          output += `DEBUG Lexer - StringExpr [ start " ] found on line ${globalLine}\n`;
-          charIndex++; // move past the opening quote
-          while (charIndex < line.length) {
-            if (line[charIndex] === '"') {
-              tokens.push({ type: "RQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
-              output += `DEBUG Lexer - StringExpr [ end " ] found on line ${globalLine}\n`;
-              break;
-            } else {
+            tokens.push({ type: "LQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
+            output += `DEBUG Lexer - StringExpr [ start " ] found on line ${globalLine}\n`;
+            charIndex++; // move past the opening quote
+            let stringContent = "";
+            while (charIndex < line.length && line[charIndex] !== '"') {
               let currentChar = line[charIndex];
               if ((currentChar >= "a" && currentChar <= "z") || currentChar === " ") {
                 tokens.push({ type: "CHAR", lexeme: currentChar, line: globalLine, column: charIndex + 1 });
+                stringContent += currentChar;
                 output += `DEBUG Lexer - char [ ${currentChar} ] found on line ${globalLine}\n`;
               } else {
                 errors++;
                 output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token: ${currentChar} Only lowercase letters a through z and spaces are allowed in strings\n`;
                 output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-                break; // exit the current loop 
+                break; // exit the current loop
               }
-              
-                  
+              charIndex++;
             }
-            charIndex++;
-          }
-          if (charIndex >= line.length || line[charIndex] !== '"') {
-            output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
-            errors++;
-            output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-            break; // exit the current loop
+            if (charIndex < line.length && line[charIndex] === '"') {
+              tokens.push({ type: "RQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
+              output += `DEBUG Lexer - StringExpr [ end " ] found on line ${globalLine}\n`;
+            } else {
+              output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
+              errors++;
+              output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+              break; // exit the current loop
+            }
+            // Warning: if the string content is empty (after trimming), issue a warning.
+            if (stringContent.trim().length === 0) {
+              output += `WARNING Lexer - Warning: line ${globalLine} - Empty string literal detected.\n\n`;
+            }
           }
           
-          
-        }
         // --- Digits ---
         else if (/[0-9]/.test(char)) {
           tokens.push({ type: "DIGIT", lexeme: char, line: globalLine, column: charIndex + 1 });
