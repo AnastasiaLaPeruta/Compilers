@@ -545,12 +545,25 @@ interface Token {
     print(node: CSTNode | null = this.root, depth: number = 0): string {
         if (!node) return "";
         const indent = "-".repeat(depth);
-        let result = indent + `<${node.label}>\n`;
+        let displayLabel: string;
+        
+        // If it's a punctuation token, use square brackets
+        if (node.label === "{" || node.label === "}" || node.label === "$") {
+          displayLabel = `[${node.label}]`;
+        } else if (node.label === "StatementList") {
+          // Replace "StatementList" with "Statement List"
+          displayLabel = `<Statement List>`;
+        } else {
+          displayLabel = `<${node.label}>`;
+        }
+        
+        let result = indent + displayLabel + "\n";
         for (const child of node.children) {
-            result += this.print(child, depth + 1);
+          result += this.print(child, depth + 1);
         }
         return result;
-    }
+      }
+      
       
   }
   
