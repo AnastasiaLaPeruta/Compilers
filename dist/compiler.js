@@ -70,8 +70,7 @@ function lexProgram(progText, lineOffset = 0) {
                     output += `ERROR Lexer - Error: Unterminated comment starting on line ${globalLine}. Lexing terminated.\n`;
                     errors++;
                     output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-                    compileCode(output);
-                    return { tokens, output, errors };
+                    break; // exit the current loop instead of returning immediately
                 }
                 continue; // Skip further processing inside comment.
             }
@@ -156,19 +155,19 @@ function lexProgram(progText, lineOffset = 0) {
                             output += `DEBUG Lexer - char [ ${currentChar} ] found on line ${globalLine}\n`;
                         }
                         else {
+                            errors++;
                             output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token: ${currentChar} Only lowercase letters a through z and spaces are allowed in strings\n`;
-                            output += `Error Lexer - Lex failed with ${errors + 1} error(s)\n\n`;
-                            compileCode(output);
-                            return { tokens, output, errors: errors + 1 };
+                            output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+                            break; // exit the current loop 
                         }
                     }
                     charIndex++;
                 }
                 if (charIndex >= line.length || line[charIndex] !== '"') {
                     output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
-                    output += `Error Lexer - Lex failed with ${errors + 1} error(s)\n\n`;
-                    compileCode(output);
-                    return { tokens, output, errors: errors + 1 };
+                    errors++;
+                    output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+                    break; // exit the current loop
                 }
             }
             // --- Digits ---
@@ -200,7 +199,6 @@ function lexProgram(progText, lineOffset = 0) {
         output += `ERROR Lexer - Error: last line of program - Please complete program with "$" as your last character.\n`;
         errors++;
         output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-        compileCode(output);
         return { tokens, output, errors };
     }
     output += `LEXER: Lex completed with ${errors} error(s)\n\n`;
@@ -246,6 +244,11 @@ function processPrograms() {
                 compileOutput += `PARSER: Parse completed successfully\n`;
                 compileOutput += `\nCST for program ${programNumber}:\n` + result.tree.print();
             }
+        }
+        else {
+            // If there were lexing errors, skip parsing and output the following messages:
+            compileOutput += `PARSER: Skipped due to LEXER error(s)\n`;
+            compileOutput += `CST for program ${programNumber}: Skipped due to LEXER error(s).\n`;
         }
         finalOutput += compileOutput + "\n";
         programNumber++;

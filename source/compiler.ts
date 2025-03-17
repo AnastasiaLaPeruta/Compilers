@@ -78,9 +78,10 @@ interface Token {
             output += `ERROR Lexer - Error: Unterminated comment starting on line ${globalLine}. Lexing terminated.\n`;
             errors++;
             output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-            compileCode(output);
-            return { tokens, output, errors };
+            break; // exit the current loop instead of returning immediately
           }
+          
+          
           continue; // Skip further processing inside comment.
         }
         // --- Keywords and operators ---
@@ -153,20 +154,24 @@ interface Token {
                 tokens.push({ type: "CHAR", lexeme: currentChar, line: globalLine, column: charIndex + 1 });
                 output += `DEBUG Lexer - char [ ${currentChar} ] found on line ${globalLine}\n`;
               } else {
+                errors++;
                 output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token: ${currentChar} Only lowercase letters a through z and spaces are allowed in strings\n`;
-                output += `Error Lexer - Lex failed with ${errors + 1} error(s)\n\n`;
-                compileCode(output);
-                return { tokens, output, errors: errors + 1 };
+                output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+                break; // exit the current loop 
               }
+              
+                  
             }
             charIndex++;
           }
           if (charIndex >= line.length || line[charIndex] !== '"') {
             output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
-            output += `Error Lexer - Lex failed with ${errors + 1} error(s)\n\n`;
-            compileCode(output);
-            return { tokens, output, errors: errors + 1 };
+            errors++;
+            output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+            break; // exit the current loop
           }
+          
+          
         }
         // --- Digits ---
         else if (/[0-9]/.test(char)) {
@@ -195,12 +200,12 @@ interface Token {
     // Check that the program ends with "$"
     let trimmedText = progText.replace(/\s+$/, "");
     if (!trimmedText.endsWith("$")) {
-      output += `ERROR Lexer - Error: last line of program - Please complete program with "$" as your last character.\n`;
-      errors++;
-      output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-      compileCode(output);
-      return { tokens, output, errors };
+        output += `ERROR Lexer - Error: last line of program - Please complete program with "$" as your last character.\n`;
+        errors++;
+        output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+        return { tokens, output, errors };
     }
+ 
   
     output += `LEXER: Lex completed with ${errors} error(s)\n\n`;
     return { tokens, output, errors };
@@ -231,24 +236,29 @@ interface Token {
     }
     let programNumber = 1;
     for (const { program, offset } of programs) {
-      const lexResult = lexProgram(program, offset);
-      let compileOutput = `LEXER - Lexing program ${programNumber}...\n` + lexResult.output;
-      if (lexResult.errors === 0) {
-        compileOutput += `PARSER: Parsing program ${programNumber}...\n`;
-        const parserInstance = new Parser(lexResult.tokens);
-        const result = parserInstance.parse();
-        compileOutput += result.output;
-        if (result.error) {
-          compileOutput += `\nPARSER ERROR: ${result.error}\n`;
-          compileOutput += `CST for program ${programNumber}: Skipped due to PARSER error(s).\n`;
-        } else if (result.tree) {
-          compileOutput += `PARSER: Parse completed successfully\n`;
-          compileOutput += `\nCST for program ${programNumber}:\n` + result.tree.print();
+        const lexResult = lexProgram(program, offset);
+        let compileOutput = `LEXER - Lexing program ${programNumber}...\n` + lexResult.output;
+        if (lexResult.errors === 0) {
+          compileOutput += `PARSER: Parsing program ${programNumber}...\n`;
+          const parserInstance = new Parser(lexResult.tokens);
+          const result = parserInstance.parse();
+          compileOutput += result.output;
+          if (result.error) {
+            compileOutput += `\nPARSER ERROR: ${result.error}\n`;
+            compileOutput += `CST for program ${programNumber}: Skipped due to PARSER error(s).\n`;
+          } else if (result.tree) {
+            compileOutput += `PARSER: Parse completed successfully\n`;
+            compileOutput += `\nCST for program ${programNumber}:\n` + result.tree.print();
+          }
+        } else {
+          // If there were lexing errors, skip parsing and output the following messages:
+          compileOutput += `PARSER: Skipped due to LEXER error(s)\n`;
+          compileOutput += `CST for program ${programNumber}: Skipped due to LEXER error(s).\n`;
         }
+        finalOutput += compileOutput + "\n";
+        programNumber++;
       }
-      finalOutput += compileOutput + "\n";
-      programNumber++;
-    }
+      
     compileCode(finalOutput);
   }
   
