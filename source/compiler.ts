@@ -728,6 +728,7 @@ function processPrograms() {
     for (const progText of programs) {
         // Lex this program.
         const lexResult = lexProgram(progText);
+        finalOutput += 'DEBUG: Running in verbose mode \n\n';
         let compileOutput = `LEXER - Lexing program ${programNumber}...\n` + lexResult.output;
         if (lexResult.errors > 0) {
             compileOutput += `Error Lexer - Lex failed with ${lexResult.errors} error(s)\n\n`;
