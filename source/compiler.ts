@@ -1,4 +1,4 @@
-// ChatGPT gave initial suggestion for tracking the line and position number of the input, also utilized for parser functionality
+// ChatGPT gave initial suggestion for tracking the line and position number of the input, also utilized for parser functionality and CST
 // ----------------------- Token Interface ----------------------- //
 interface Token {
     type: string;
@@ -273,7 +273,7 @@ interface Token {
     // Begin parsing.
     public parse(): { output: string, tree: CST | null, error: string | null } {
       try {
-        this.output += "PARSER: parse() called\n";
+        this.output += "PARSER: parse() \n";
         this.parseProgram();
         return { output: this.output, tree: this.cst, error: null };
       } catch (error) {
@@ -296,26 +296,30 @@ interface Token {
   
     // Block ::= { StatementList }
     private parseBlock(): void {
-      this.output += "PARSER: parseBlock()\n";
-      this.cst.addNode("branch", "Block");
-      this.match("LBRACE");
-      this.parseStatementList();
-      this.match("RBRACE");
-      this.cst.moveUp();
-    }
+        this.output += "PARSER: parseBlock()\n";
+        this.cst.addNode("branch", "Block");
+        this.match("LBRACE");
+        // Create the Statement List node once.
+        this.cst.addNode("branch", "Statement List");
+        this.parseStatementList();
+        this.cst.moveUp();  // finish Statement List
+        this.match("RBRACE");
+        this.cst.moveUp();
+      }
+      
+      
   
     // StatementList ::= Statement StatementList | ε
     private parseStatementList(): void {
-      this.output += "PARSER: parseStatementList()\n";
-      this.cst.addNode("branch", "StatementList");
-      const token = this.peekToken();
-      if (!(token && (token.type === "RBRACE" || token.type === "EOP"))) {
-        this.parseStatement();
-        this.parseStatementList();
+        this.output += "PARSER: parseStatementList()\n";
+        const token = this.peekToken();
+        if (token && (token.type !== "RBRACE" && token.type !== "EOP")) {
+          this.parseStatement();
+          this.parseStatementList();
+        }
+        // When the next token is RBRACE/EOP, do nothing (no node added)
       }
       
-      this.cst.moveUp();
-    }
   
     // Statement ::= PrintStatement | AssignmentStatement | VarDecl | WhileStatement | IfStatement | Block
     private parseStatement(): void {

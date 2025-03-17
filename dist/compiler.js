@@ -294,20 +294,22 @@ class Parser {
         this.output += "PARSER: parseBlock()\n";
         this.cst.addNode("branch", "Block");
         this.match("LBRACE");
+        // Create the Statement List node once.
+        this.cst.addNode("branch", "Statement List");
         this.parseStatementList();
+        this.cst.moveUp(); // finish Statement List
         this.match("RBRACE");
         this.cst.moveUp();
     }
     // StatementList ::= Statement StatementList | ε
     parseStatementList() {
         this.output += "PARSER: parseStatementList()\n";
-        this.cst.addNode("branch", "StatementList");
         const token = this.peekToken();
-        if (!(token && (token.type === "RBRACE" || token.type === "EOP"))) {
+        if (token && (token.type !== "RBRACE" && token.type !== "EOP")) {
             this.parseStatement();
             this.parseStatementList();
         }
-        this.cst.moveUp();
+        // When the next token is RBRACE/EOP, do nothing (no node added)
     }
     // Statement ::= PrintStatement | AssignmentStatement | VarDecl | WhileStatement | IfStatement | Block
     parseStatement() {
