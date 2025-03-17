@@ -5,49 +5,50 @@ function compileCode(compileOutput) {
     outputElement.value = compileOutput;
 }
 // ----------------------- Lexing Functions ----------------------- //
-// This function encapsulates the lexing loop for a single program (the text before the '$' marker).
-// It produces tokens (with line/column info) and prints debug messages.
-function lexProgram(progText) {
+// Modified lexProgram accepts an optional lineOffset.
+// All tokens are reported with line number = (lineOffset + localLineIndex + 1)
+function lexProgram(progText, lineOffset = 0) {
     let tokens = [];
     let errors = 0;
     let output = "";
     const lines = progText.split("\n");
     let position = 0;
     // Process each line
-    for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
-        let line = lines[lineNumber];
+    for (let localLine = 0; localLine < lines.length; localLine++) {
+        let line = lines[localLine];
+        const globalLine = lineOffset + localLine + 1; // Global line number
         for (let charIndex = 0; charIndex < line.length; charIndex++) {
             const char = line[charIndex];
             console.log(`  Character ${charIndex + 1} (global position ${position}): '${char}'`);
             // --- Check for End-of-Program marker ---
             if (char === "$") {
-                tokens.push({ type: "EOP", lexeme: "$", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - EOP [ $ ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "EOP", lexeme: "$", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - EOP [ $ ] found on line ${globalLine}\n`;
                 continue;
             }
             // --- Punctuation and grouping ---
             else if (char === "{") {
-                tokens.push({ type: "LBRACE", lexeme: "{", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "LBRACE", lexeme: "{", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - OPEN_BLOCK [ { ] found on line ${globalLine}\n`;
             }
             else if (char === "}") {
-                tokens.push({ type: "RBRACE", lexeme: "}", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - CLOSE_BLOCK [ } ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "RBRACE", lexeme: "}", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - CLOSE_BLOCK [ } ] found on line ${globalLine}\n`;
             }
             else if (char === "(") {
-                tokens.push({ type: "LPAREN", lexeme: "(", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - LPAREN [ ( ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "LPAREN", lexeme: "(", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - LPAREN [ ( ] found on line ${globalLine}\n`;
             }
             else if (char === ")") {
-                tokens.push({ type: "RPAREN", lexeme: ")", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - RPAREN [ ) ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "RPAREN", lexeme: ")", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - RPAREN [ ) ] found on line ${globalLine}\n`;
             }
             // --- Comments: skip everything between /* and */ ---
             else if (char === "/" && charIndex + 1 < line.length && line[charIndex + 1] === "*") {
-                output += `DEBUG Lexer - Comment start [ /* ] found on line ${lineNumber + 1}\n`;
+                output += `DEBUG Lexer - Comment start [ /* ] found on line ${globalLine}\n`;
                 charIndex += 2; // Skip the "/*"
                 let commentClosed = false;
-                while (lineNumber < lines.length) {
+                while (localLine < lines.length) {
                     while (charIndex < line.length - 1) {
                         if (line[charIndex] === "*" && line[charIndex + 1] === "/") {
                             commentClosed = true;
@@ -58,14 +59,16 @@ function lexProgram(progText) {
                     }
                     if (commentClosed)
                         break;
-                    lineNumber++;
-                    if (lineNumber < lines.length) {
-                        line = lines[lineNumber];
+                    localLine++;
+                    if (localLine < lines.length) {
+                        line = lines[localLine];
+                        // update global line number accordingly
+                        // Note: column resets to 0 for the new line.
                         charIndex = 0;
                     }
                 }
                 if (!commentClosed) {
-                    output += `ERROR Lexer - Error: Unterminated comment starting on line ${lineNumber + 1}. Lexing terminated.\n`;
+                    output += `ERROR Lexer - Error: Unterminated comment starting on line ${globalLine}. Lexing terminated.\n`;
                     errors++;
                     output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
                     compileCode(output);
@@ -75,28 +78,28 @@ function lexProgram(progText) {
             }
             // --- Keywords and operators ---
             else if (line.substring(charIndex, charIndex + 5) === "print") {
-                tokens.push({ type: "PRINT", lexeme: "print", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - PRINT [ print ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "PRINT", lexeme: "print", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - PRINT [ print ] found on line ${globalLine}\n`;
                 charIndex += 4;
             }
             else if (line.substring(charIndex, charIndex + 5) === "while") {
-                tokens.push({ type: "WHILE", lexeme: "while", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - WHILE [ while ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "WHILE", lexeme: "while", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - WHILE [ while ] found on line ${globalLine}\n`;
                 charIndex += 4;
             }
             else if (line.substring(charIndex, charIndex + 2) === "if") {
-                tokens.push({ type: "IFSTATEMENT", lexeme: "if", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - IFSTATEMENT [ if ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "IFSTATEMENT", lexeme: "if", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - IFSTATEMENT [ if ] found on line ${globalLine}\n`;
                 charIndex++;
             }
             else if (line.substring(charIndex, charIndex + 4) === "true") {
-                tokens.push({ type: "BOOLVALT", lexeme: "true", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - BOOLVALT [ true ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "BOOLVALT", lexeme: "true", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - BOOLVALT [ true ] found on line ${globalLine}\n`;
                 charIndex += 3;
             }
             else if (line.substring(charIndex, charIndex + 5) === "false") {
-                tokens.push({ type: "BOOLVALF", lexeme: "false", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - BOOLVALF [ false ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "BOOLVALF", lexeme: "false", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - BOOLVALF [ false ] found on line ${globalLine}\n`;
                 charIndex += 4;
             }
             // --- Type keywords ---
@@ -111,50 +114,50 @@ function lexProgram(progText) {
                 else if (line.substring(charIndex, charIndex + 7) === "boolean") {
                     typeLexeme = "boolean";
                 }
-                tokens.push({ type: "ITYPE", lexeme: typeLexeme, line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - ITYPE [ ${typeLexeme} ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "ITYPE", lexeme: typeLexeme, line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - ITYPE [ ${typeLexeme} ] found on line ${globalLine}\n`;
                 charIndex += typeLexeme.length - 1;
             }
             // --- Assignment and comparison operators ---
             else if (char === "=") {
                 if (charIndex + 1 < line.length && line[charIndex + 1] === "=") {
-                    tokens.push({ type: "BOOL_EQUAL", lexeme: "==", line: lineNumber + 1, column: charIndex + 1 });
-                    output += `DEBUG Lexer - BOOL_EQUAL [ == ] found on line ${lineNumber + 1}\n`;
+                    tokens.push({ type: "BOOL_EQUAL", lexeme: "==", line: globalLine, column: charIndex + 1 });
+                    output += `DEBUG Lexer - BOOL_EQUAL [ == ] found on line ${globalLine}\n`;
                     charIndex++;
                 }
                 else {
-                    tokens.push({ type: "ASSIGN_OP", lexeme: "=", line: lineNumber + 1, column: charIndex + 1 });
-                    output += `DEBUG Lexer - ASSIGN_OP [ = ] found on line ${lineNumber + 1}\n`;
+                    tokens.push({ type: "ASSIGN_OP", lexeme: "=", line: globalLine, column: charIndex + 1 });
+                    output += `DEBUG Lexer - ASSIGN_OP [ = ] found on line ${globalLine}\n`;
                 }
             }
             else if (char === "!" && charIndex + 1 < line.length && line[charIndex + 1] === "=") {
-                tokens.push({ type: "BOOL_INEQUAL", lexeme: "!=", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - BOOL_INEQUAL [ != ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "BOOL_INEQUAL", lexeme: "!=", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - BOOL_INEQUAL [ != ] found on line ${globalLine}\n`;
                 charIndex++;
             }
             else if (char === "+") {
-                tokens.push({ type: "INTOP", lexeme: "+", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - INTOP [ + ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "INTOP", lexeme: "+", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - INTOP [ + ] found on line ${globalLine}\n`;
             }
             // --- String Expressions ---
             else if (char === '"') {
-                tokens.push({ type: "LQUOTE", lexeme: "\"", line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - StringExpr [ start " ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "LQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - StringExpr [ start " ] found on line ${globalLine}\n`;
                 charIndex++; // move past the opening quote
                 while (charIndex < line.length) {
                     if (line[charIndex] === '"') {
-                        tokens.push({ type: "RQUOTE", lexeme: "\"", line: lineNumber + 1, column: charIndex + 1 });
-                        output += `DEBUG Lexer - StringExpr [ end " ] found on line ${lineNumber + 1}\n`;
+                        tokens.push({ type: "RQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
+                        output += `DEBUG Lexer - StringExpr [ end " ] found on line ${globalLine}\n`;
                         break;
                     }
                     else {
                         let currentChar = line[charIndex];
                         if ((currentChar >= "a" && currentChar <= "z") || currentChar === " ") {
-                            tokens.push({ type: "CHAR", lexeme: currentChar, line: lineNumber + 1, column: charIndex + 1 });
-                            output += `DEBUG Lexer - char [ ${currentChar} ] found on line ${lineNumber + 1}\n`;
+                            tokens.push({ type: "CHAR", lexeme: currentChar, line: globalLine, column: charIndex + 1 });
+                            output += `DEBUG Lexer - char [ ${currentChar} ] found on line ${globalLine}\n`;
                         }
                         else {
-                            output += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${currentChar} Only lowercase letters a through z and spaces are allowed in strings\n`;
+                            output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token: ${currentChar} Only lowercase letters a through z and spaces are allowed in strings\n`;
                             output += `Error Lexer - Lex failed with ${errors + 1} error(s)\n\n`;
                             compileCode(output);
                             return { tokens, output, errors: errors + 1 };
@@ -163,7 +166,7 @@ function lexProgram(progText) {
                     charIndex++;
                 }
                 if (charIndex >= line.length || line[charIndex] !== '"') {
-                    output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${lineNumber + 1}. Lexing terminated due to fatal error.\n`;
+                    output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
                     output += `Error Lexer - Lex failed with ${errors + 1} error(s)\n\n`;
                     compileCode(output);
                     return { tokens, output, errors: errors + 1 };
@@ -171,13 +174,13 @@ function lexProgram(progText) {
             }
             // --- Digits ---
             else if (/[0-9]/.test(char)) {
-                tokens.push({ type: "DIGIT", lexeme: char, line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - DIGIT [ ${char} ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "DIGIT", lexeme: char, line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - DIGIT [ ${char} ] found on line ${globalLine}\n`;
             }
             // --- Identifiers (a single character) ---
             else if (char >= "a" && char <= "z") {
-                tokens.push({ type: "ID", lexeme: char, line: lineNumber + 1, column: charIndex + 1 });
-                output += `DEBUG Lexer - ID [ ${char} ] found on line ${lineNumber + 1}\n`;
+                tokens.push({ type: "ID", lexeme: char, line: globalLine, column: charIndex + 1 });
+                output += `DEBUG Lexer - ID [ ${char} ] found on line ${globalLine}\n`;
             }
             // --- Ignore whitespace ---
             else if (char === " " || char === "\t") {
@@ -186,7 +189,7 @@ function lexProgram(progText) {
             // --- Unrecognized token ---
             else {
                 errors++;
-                output += `ERROR Lexer - Error: line ${lineNumber + 1} Unrecognized Token: ${char} Please reference grammar guide.\n`;
+                output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token: ${char} Please reference grammar guide.\n`;
             }
             position++;
         }
@@ -206,7 +209,7 @@ function lexProgram(progText) {
 }
 // ----------------------- Program Processing ----------------------- //
 // This function splits the input (which may contain multiple programs separated by "$"),
-// re-appends "$" to each program (so each ends with the EOP marker), lexes and then parses each.
+// computes a global line offset for each program, and then lexes and parses each.
 function processPrograms() {
     let finalOutput = "DEBUG: Running in verbose mode \n\n";
     const inputElement = document.getElementById("userInput");
@@ -215,20 +218,24 @@ function processPrograms() {
         compileCode(`ERROR: Last character of input must be "$".\n`);
         return;
     }
-    // Split input into programs without stripping newlines.
+    // Split input into raw programs (preserving newlines)
     const rawPrograms = text.split("$");
     const programs = [];
+    let cumulativeLineCount = 0;
     for (const raw of rawPrograms) {
-        if (raw.length > 0) {
-            programs.push(raw + "$");
+        // Only consider parts that are not empty when trimmed.
+        if (raw.trim().length > 0) {
+            programs.push({ program: raw + "$", offset: cumulativeLineCount });
         }
+        // Update cumulativeLineCount by counting newlines in raw.
+        cumulativeLineCount += (raw.match(/\n/g) || []).length;
     }
     let programNumber = 1;
-    for (const progText of programs) {
-        const lexResult = lexProgram(progText);
+    for (const { program, offset } of programs) {
+        const lexResult = lexProgram(program, offset);
         let compileOutput = `LEXER - Lexing program ${programNumber}...\n` + lexResult.output;
-        // Do not add additional lexing completion/error messages, since lexResult.output already includes them.
         if (lexResult.errors === 0) {
+            compileOutput += `PARSER: Parsing program ${programNumber}...\n`;
             const parserInstance = new Parser(lexResult.tokens);
             const result = parserInstance.parse();
             compileOutput += result.output;
