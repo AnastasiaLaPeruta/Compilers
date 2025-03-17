@@ -268,7 +268,7 @@ class Parser {
     // Begin parsing.
     parse() {
         try {
-            this.output += "PARSER: parse() called\n";
+            this.output += "PARSER: parse() \n";
             this.parseProgram();
             return { output: this.output, tree: this.cst, error: null };
         }
