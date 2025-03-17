@@ -203,7 +203,7 @@ function lexProgram(progText, lineOffset = 0) {
         compileCode(output);
         return { tokens, output, errors };
     }
-    output += `LEXER: Lex completed successfully with ${errors} error(s)\n\n`;
+    output += `LEXER: Lex completed with ${errors} error(s)\n\n`;
     return { tokens, output, errors };
 }
 // ----------------------- Program Processing ----------------------- //
@@ -267,15 +267,17 @@ class Parser {
     // Begin parsing.
     parse() {
         try {
-            this.output += "PARSER: parse() \n";
+            this.output += "PARSER: parse() called\n";
             this.parseProgram();
             return { output: this.output, tree: this.cst, error: null };
         }
         catch (error) {
             if (error instanceof Error) {
+                this.output += `\nPARSER: Parse failed with 1 error\n`;
                 return { output: this.output, tree: null, error: error.message };
             }
             else {
+                this.output += `\nPARSER: Parse failed with 1 error\n`;
                 return { output: this.output, tree: null, error: "An unknown error occurred" };
             }
         }

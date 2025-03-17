@@ -202,7 +202,7 @@ interface Token {
       return { tokens, output, errors };
     }
   
-    output += `LEXER: Lex completed successfully with ${errors} error(s)\n\n`;
+    output += `LEXER: Lex completed with ${errors} error(s)\n\n`;
     return { tokens, output, errors };
   }
   
@@ -271,18 +271,22 @@ interface Token {
   
     // Begin parsing.
     public parse(): { output: string, tree: CST | null, error: string | null } {
-      try {
-        this.output += "PARSER: parse() \n";
-        this.parseProgram();
-        return { output: this.output, tree: this.cst, error: null };
-      } catch (error) {
-        if (error instanceof Error) {
-          return { output: this.output, tree: null, error: error.message };
-        } else {
-          return { output: this.output, tree: null, error: "An unknown error occurred" };
+        try {
+          this.output += "PARSER: parse() called\n";
+          this.parseProgram();
+          return { output: this.output, tree: this.cst, error: null };
+        } catch (error) {
+          if (error instanceof Error) {
+            this.output += `\nPARSER: Parse failed with 1 error\n`;
+            return { output: this.output, tree: null, error: error.message };
+          } else {
+            this.output += `\nPARSER: Parse failed with 1 error\n`;
+            return { output: this.output, tree: null, error: "An unknown error occurred" };
+          }
         }
       }
-    }
+      
+    
   
     // Program ::= Block EOP
     private parseProgram() {
