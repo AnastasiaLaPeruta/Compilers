@@ -243,6 +243,7 @@ interface Token {
           compileOutput += `\nPARSER ERROR: ${result.error}\n`;
           compileOutput += `CST for program ${programNumber}: Skipped due to PARSER error(s).\n`;
         } else if (result.tree) {
+          compileOutput += `PARSER: Parse completed successfully\n`;
           compileOutput += `\nCST for program ${programNumber}:\n` + result.tree.print();
         }
       }
