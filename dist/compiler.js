@@ -538,7 +538,6 @@ function compileCode(compileOutput) {
 // This function encapsulates your lexing loop for a single program (the text before the '$' marker).
 function lexProgram(progText) {
     let tokens = [];
-    let compileOutput = "DEBUG: Running in verbose mode \n\n";
     let errors = 0;
     const lines = progText.split("\n");
     let position = 0;
@@ -653,7 +652,6 @@ function processPrograms() {
     }
     // Split the input into separate programs.
     const programs = text.split("$").map(p => p.trim()).filter(p => p.length > 0);
-    let finalOutput = "DEBUG: Running in verbose mode \n\n";
     let programNumber = 1;
     for (const progText of programs) {
         // Lex this program.

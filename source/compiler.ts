@@ -9,6 +9,9 @@ interface Token {
 
 let tokens: Token[] = [];
 
+// global var
+let compileOutput = "";
+
 function lexer() {
     const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
     const text = inputElement.value; // Get text from textarea
@@ -17,7 +20,6 @@ function lexer() {
     let position = 0; // Tracks the character position
 
     let charList: string[] = [];    // Creates array
-    let compileOutput = "";
     let errors = 0;
     compileOutput += 'DEBUG: Running in verbose mode \n\n';
     let program = 1; // This will increment with each $ and print ending and then new program block
@@ -620,7 +622,6 @@ function compileCode(compileOutput: string) {
 // This function encapsulates your lexing loop for a single program (the text before the '$' marker).
 function lexProgram(progText: string): { tokens: Token[], output: string, errors: number } {
     let tokens: Token[] = [];
-    let compileOutput = "DEBUG: Running in verbose mode \n\n";
     let errors = 0;
     const lines = progText.split("\n");
     let position = 0;
@@ -721,7 +722,6 @@ function processPrograms() {
     }
     // Split the input into separate programs.
     const programs = text.split("$").map(p => p.trim()).filter(p => p.length > 0);
-    let finalOutput = "DEBUG: Running in verbose mode \n\n";
     let programNumber = 1;
     
     for (const progText of programs) {
