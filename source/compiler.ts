@@ -309,12 +309,11 @@ interface Token {
       this.output += "PARSER: parseStatementList()\n";
       this.cst.addNode("branch", "StatementList");
       const token = this.peekToken();
-      if (token && (token.type === "RBRACE" || token.type === "EOP")) {
-        this.cst.addNode("leaf", "ε");
-      } else {
+      if (!(token && (token.type === "RBRACE" || token.type === "EOP"))) {
         this.parseStatement();
         this.parseStatementList();
       }
+      
       this.cst.moveUp();
     }
   
@@ -543,14 +542,16 @@ interface Token {
       }
     }
   
-    print(node: CSTNode | null = this.root, indent: string = ""): string {
-      if (!node) return "";
-      let result = indent + `<${node.label}>\n`;
-      for (const child of node.children) {
-        result += this.print(child, indent + "  ");
-      }
-      return result;
+    print(node: CSTNode | null = this.root, depth: number = 0): string {
+        if (!node) return "";
+        const indent = "-".repeat(depth);
+        let result = indent + `<${node.label}>\n`;
+        for (const child of node.children) {
+            result += this.print(child, depth + 1);
+        }
+        return result;
     }
+      
   }
   
   // ----------------------- DOM Event Listener ----------------------- //

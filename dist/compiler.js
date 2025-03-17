@@ -303,10 +303,7 @@ class Parser {
         this.output += "PARSER: parseStatementList()\n";
         this.cst.addNode("branch", "StatementList");
         const token = this.peekToken();
-        if (token && (token.type === "RBRACE" || token.type === "EOP")) {
-            this.cst.addNode("leaf", "ε");
-        }
-        else {
+        if (!(token && (token.type === "RBRACE" || token.type === "EOP"))) {
             this.parseStatement();
             this.parseStatementList();
         }
@@ -530,12 +527,13 @@ class CST {
             this.current = this.current.parent;
         }
     }
-    print(node = this.root, indent = "") {
+    print(node = this.root, depth = 0) {
         if (!node)
             return "";
+        const indent = "-".repeat(depth);
         let result = indent + `<${node.label}>\n`;
         for (const child of node.children) {
-            result += this.print(child, indent + "  ");
+            result += this.print(child, depth + 1);
         }
         return result;
     }
