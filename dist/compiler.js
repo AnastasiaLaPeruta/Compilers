@@ -1,12 +1,13 @@
 // ChatGPT gave initial suggestion for tracking the line and position number of the input this way, also utilized for parser
 let tokens = [];
+// global var
+let compileOutput = "";
 function lexer() {
     const inputElement = document.getElementById("userInput");
     const text = inputElement.value; // Get text from textarea
     const lines = text.split("\n"); // Split into lines based on line breaks
     let position = 0; // Tracks the character position
     let charList = []; // Creates array
-    let compileOutput = "";
     let errors = 0;
     compileOutput += 'DEBUG: Running in verbose mode \n\n';
     let program = 1; // This will increment with each $ and print ending and then new program block
@@ -644,6 +645,7 @@ function lexProgram(progText) {
 }
 // Splits the input into programs (delimited by '$'), lexes each, and if valid, parses it and builds a CST.
 function processPrograms() {
+    let finalOutput = "";
     const inputElement = document.getElementById("userInput");
     const text = inputElement.value.trim();
     if (!text.endsWith("$")) {

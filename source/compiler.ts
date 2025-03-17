@@ -714,6 +714,7 @@ function lexProgram(progText: string): { tokens: Token[], output: string, errors
 
 // Splits the input into programs (delimited by '$'), lexes each, and if valid, parses it and builds a CST.
 function processPrograms() {
+    let finalOutput = "";
     const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
     const text = inputElement.value.trim();
     if (!text.endsWith("$")) {
