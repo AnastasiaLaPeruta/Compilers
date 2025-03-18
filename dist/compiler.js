@@ -20,7 +20,7 @@ function lexProgram(progText, lineOffset = 0) {
         for (let charIndex = 0; charIndex < line.length; charIndex++) {
             const char = line[charIndex];
             console.log(`  Character ${charIndex + 1} (global position ${position}): '${char}'`);
-            // Checks for EOP
+            // --- Check for End-of-Program marker ---
             if (char === "$") {
                 tokens.push({ type: "EOP", lexeme: "$", line: globalLine, column: charIndex + 1 });
                 output += `DEBUG Lexer - EOP [ $ ] found on line ${globalLine}\n`;
@@ -34,8 +34,7 @@ function lexProgram(progText, lineOffset = 0) {
                 if (extraDollars.length > 0) {
                     output += `WARNING Lexer - Warning: line ${globalLine} - Extra "${extraDollars}" detected. Program will continue to execute assuming you meant to do this...\n\n`;
                 }
-                // Warning 2: Check for extra non-whitespace characters after '$'
-                // Warning 2: Check for any extra characters after '$' (even if they are whitespace)
+                // Warning 2: Check for any extra characters after '$' (even whitespace)
                 if (j < line.length) {
                     output += `WARNING Lexer - Warning: line ${globalLine} - Extra characters after "$" will be ignored.\n\n`;
                 }
@@ -69,7 +68,7 @@ function lexProgram(progText, lineOffset = 0) {
                     while (charIndex < line.length - 1) {
                         if (line[charIndex] === "*" && line[charIndex + 1] === "/") {
                             commentClosed = true;
-                            charIndex += 1; // Skip the "*/"
+                            charIndex += 2; // Skip the "*/"
                             break;
                         }
                         commentContent += line[charIndex];
@@ -87,7 +86,7 @@ function lexProgram(progText, lineOffset = 0) {
                     output += `ERROR Lexer - Error: Unterminated comment starting on line ${globalLine}. Lexing terminated.\n`;
                     errors++;
                     output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-                    break; // exit the current loop
+                    return { tokens, output, errors };
                 }
                 // Warning: if the comment content is empty (or only whitespace), issue a warning.
                 if (commentContent.trim().length === 0) {
@@ -175,7 +174,7 @@ function lexProgram(progText, lineOffset = 0) {
                         errors++;
                         output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token: ${currentChar} Only lowercase letters a through z and spaces are allowed in strings\n`;
                         output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-                        break; // exit the current loop
+                        return { tokens, output, errors };
                     }
                     charIndex++;
                 }
@@ -184,12 +183,11 @@ function lexProgram(progText, lineOffset = 0) {
                     output += `DEBUG Lexer - StringExpr [ end " ] found on line ${globalLine}\n`;
                 }
                 else {
-                    output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
                     errors++;
+                    output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
                     output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-                    break; // exit the current loop
+                    return { tokens, output, errors };
                 }
-                // Warning: if the string content is empty (after trimming), issue a warning.
                 if (stringContent.trim().length === 0) {
                     output += `WARNING Lexer - Warning: line ${globalLine} - Empty string literal detected.\n\n`;
                 }
