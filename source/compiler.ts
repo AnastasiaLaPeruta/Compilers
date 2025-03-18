@@ -222,10 +222,15 @@ function lexProgram(progText: string, lineOffset: number = 0): { tokens: Token[]
     }
   
     // Check that the program ends with "$"
-    let trimmedText = progText.replace(/\s+$/, "");
-    if (!trimmedText.endsWith("$")) {
-        output += `WARNING Lexer - Warning: last line of program does not end with "$". Extra characters will be ignored.\n\n`;
-    }
+    // Check that the program ends with "$"
+let trimmedText = progText.replace(/\s+$/, "");
+if (!trimmedText.endsWith("$")) {
+    output += `ERROR Lexer - Error: last line of program does not end with "$".\n`;
+    errors++;
+    output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+    return { tokens, output, errors };
+}
+
   
     output += `LEXER: Lex completed with ${errors} error(s)\n\n`;
     return { tokens, output, errors };
@@ -238,17 +243,24 @@ function processPrograms() {
     let finalOutput = "DEBUG: Running in verbose mode \n\n";
     const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
     const text = inputElement.value;
-    // Split input into raw programs (preserving newlines)
-    let rawPrograms = text.split("$");
+    // Split input into raw programs, preserving newlines
+    let rawPrograms = text.split("$");.
     const programs: { program: string, offset: number }[] = [];
     let cumulativeLineCount = 0;
-    for (const raw of rawPrograms) {
+    for (let i = 0; i < rawPrograms.length; i++) {
+        const raw = rawPrograms[i];
         if (raw.trim().length > 0) {
-            programs.push({ program: raw, offset: cumulativeLineCount });
+            if (i < rawPrograms.length - 1) {
+                // For every part except the last, append "$" back
+                programs.push({ program: raw + "$", offset: cumulativeLineCount });
+            } else {
+                // Last program: leave it as is
+                programs.push({ program: raw, offset: cumulativeLineCount });
+            }
         }
-        
         cumulativeLineCount += (raw.match(/\n/g) || []).length;
     }
+
     let programNumber = 1;
     for (const { program, offset } of programs) {
         const lexResult = lexProgram(program, offset);
