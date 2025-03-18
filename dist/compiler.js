@@ -34,7 +34,7 @@ function lexProgram(progText, lineOffset = 0) {
                 if (extraDollars.length > 0) {
                     output += `WARNING Lexer - Warning: line ${globalLine} - Extra "${extraDollars}" detected. Program will continue to execute assuming you meant to do this...\n\n`;
                 }
-                // Warning 2: Check for any extra characters after '$' (even whitespace)
+                // Warning 2: Check for any extra characters after '$' (even if they are whitespace)
                 if (j < line.length) {
                     output += `WARNING Lexer - Warning: line ${globalLine} - Extra characters after "$" will be ignored.\n\n`;
                 }
@@ -159,40 +159,35 @@ function lexProgram(progText, lineOffset = 0) {
             }
             // --- String Expressions ---
             else if (char === '"') {
-                // Start of string literal
                 tokens.push({ type: "LQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
                 output += `DEBUG Lexer - StringExpr [ start " ] found on line ${globalLine}\n`;
                 charIndex++; // move past the opening quote
-                // Collect all characters until the closing quote or end-of-line
                 let stringContent = "";
                 while (charIndex < line.length && line[charIndex] !== '"') {
-                    stringContent += line[charIndex];
+                    let currentChar = line[charIndex];
+                    if ((currentChar >= "a" && currentChar <= "z") || currentChar === " ") {
+                        tokens.push({ type: "CHAR", lexeme: currentChar, line: globalLine, column: charIndex + 1 });
+                        stringContent += currentChar;
+                        output += `DEBUG Lexer - char [ ${currentChar} ] found on line ${globalLine}\n`;
+                    }
+                    else {
+                        errors++;
+                        output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token in string: ${currentChar} Only lowercase letters a through z and spaces are allowed in strings\n`;
+                        output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+                        return { tokens, output, errors };
+                    }
                     charIndex++;
                 }
-                // Check if we found a closing quote
                 if (charIndex < line.length && line[charIndex] === '"') {
-                    // Found closing quote; now validate the collected string content
-                    for (let i = 0; i < stringContent.length; i++) {
-                        const c = stringContent[i];
-                        if (!((c >= "a" && c <= "z") || c === " ")) {
-                            errors++;
-                            output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token in string: ${c} Only lowercase letters a through z and spaces are allowed in strings\n`;
-                            output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-                            return { tokens, output, errors };
-                        }
-                    }
-                    // If valid, add the closing quote token.
                     tokens.push({ type: "RQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
                     output += `DEBUG Lexer - StringExpr [ end " ] found on line ${globalLine}\n`;
                 }
                 else {
-                    // No closing quote found: report unterminated string error.
                     errors++;
                     output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
                     output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
                     return { tokens, output, errors };
                 }
-                // Optionally, warn if the string literal is empty.
                 if (stringContent.trim().length === 0) {
                     output += `WARNING Lexer - Warning: line ${globalLine} - Empty string literal detected.\n\n`;
                 }
@@ -223,10 +218,7 @@ function lexProgram(progText, lineOffset = 0) {
     // Check that the program ends with "$"
     let trimmedText = progText.replace(/\s+$/, "");
     if (!trimmedText.endsWith("$")) {
-        output += `ERROR Lexer - Error: last line of program - Please complete program with "$" as your last character.\n`;
-        errors++;
-        output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-        return { tokens, output, errors };
+        output += `WARNING Lexer - Warning: last line of program does not end with "$". Extra characters will be ignored.\n\n`;
     }
     output += `LEXER: Lex completed with ${errors} error(s)\n\n`;
     return { tokens, output, errors };
@@ -238,20 +230,14 @@ function processPrograms() {
     let finalOutput = "DEBUG: Running in verbose mode \n\n";
     const inputElement = document.getElementById("userInput");
     const text = inputElement.value;
-    if (!text.trim().endsWith("$")) {
-        compileCode(`ERROR: Last character of input must be "$".\n`);
-        return;
-    }
     // Split input into raw programs (preserving newlines)
-    const rawPrograms = text.split("$");
+    let rawPrograms = text.split("$");
     const programs = [];
     let cumulativeLineCount = 0;
     for (const raw of rawPrograms) {
-        // Only consider parts that are not empty when trimmed.
         if (raw.trim().length > 0) {
-            programs.push({ program: raw + "$", offset: cumulativeLineCount });
+            programs.push({ program: raw, offset: cumulativeLineCount });
         }
-        // Update cumulativeLineCount by counting newlines in raw.
         cumulativeLineCount += (raw.match(/\n/g) || []).length;
     }
     let programNumber = 1;
@@ -273,7 +259,6 @@ function processPrograms() {
             }
         }
         else {
-            // If there were lexing errors, skip parsing and output the following messages:
             compileOutput += `PARSER: Skipped due to LEXER error(s)\n`;
             compileOutput += `CST for program ${programNumber}: Skipped due to LEXER error(s).\n`;
         }
@@ -340,7 +325,6 @@ class Parser {
             this.parseStatement();
             this.parseStatementList();
         }
-        // When the next token is RBRACE/EOP, do nothing (no node added)
     }
     // Statement ::= PrintStatement | AssignmentStatement | VarDecl | WhileStatement | IfStatement | Block
     parseStatement() {

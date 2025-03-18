@@ -5,19 +5,19 @@ interface Token {
     lexeme: string;
     line: number;
     column: number;
-  }
+}
   
-  // ----------------------- Utility Function ----------------------- //
-  // Displays output in the element with id "output"
-  function compileCode(compileOutput: string) {
+// ----------------------- Utility Function ----------------------- //
+// Displays output in the element with id "output"
+function compileCode(compileOutput: string) {
     const outputElement = document.getElementById("output") as HTMLTextAreaElement;
     outputElement.value = compileOutput;
-  }
+}
   
-  // ----------------------- Lexing Functions ----------------------- //
-  // Modified lexProgram accepts an optional lineOffset.
-  // All tokens are reported with line number = (lineOffset + localLineIndex + 1)
-  function lexProgram(progText: string, lineOffset: number = 0): { tokens: Token[], output: string, errors: number } {
+// ----------------------- Lexing Functions ----------------------- //
+// Modified lexProgram accepts an optional lineOffset.
+// All tokens are reported with line number = (lineOffset + localLineIndex + 1)
+function lexProgram(progText: string, lineOffset: number = 0): { tokens: Token[], output: string, errors: number } {
     let tokens: Token[] = [];
     let errors = 0;
     let output = "";
@@ -34,27 +34,28 @@ interface Token {
   
         // --- Check for End-of-Program marker ---
         if (char === "$") {
-          tokens.push({ type: "EOP", lexeme: "$", line: globalLine, column: charIndex + 1 });
-          output += `DEBUG Lexer - EOP [ $ ] found on line ${globalLine}\n`;
-          // Warning 1: Check for extra consecutive '$'
-          let extraDollars = "";
-          let j = charIndex + 1;
-          while (j < line.length && line[j] === "$") {
-            extraDollars += "$";
-            j++;
-          }
-          if (extraDollars.length > 0) {
-            output += `WARNING Lexer - Warning: line ${globalLine} - Extra "${extraDollars}" detected. Program will continue to execute assuming you meant to do this...\n\n`;
-          }
-          // Warning 2: Check for any extra characters after '$' (even whitespace)
-          if (j < line.length) {
-            output += `WARNING Lexer - Warning: line ${globalLine} - Extra characters after "$" will be ignored.\n\n`;
-          }
-          // Skip the rest of the line
-          charIndex = line.length;
-          continue;
+            tokens.push({ type: "EOP", lexeme: "$", line: globalLine, column: charIndex + 1 });
+            output += `DEBUG Lexer - EOP [ $ ] found on line ${globalLine}\n`;
+            // Warning 1: Check for extra consecutive '$'
+            let extraDollars = "";
+            let j = charIndex + 1;
+            while (j < line.length && line[j] === "$") {
+              extraDollars += "$";
+              j++;
+            }
+            if (extraDollars.length > 0) {
+              output += `WARNING Lexer - Warning: line ${globalLine} - Extra "${extraDollars}" detected. Program will continue to execute assuming you meant to do this...\n\n`;
+            }
+            // Warning 2: Check for any extra characters after '$' (even if they are whitespace)
+            if (j < line.length) {
+                output += `WARNING Lexer - Warning: line ${globalLine} - Extra characters after "$" will be ignored.\n\n`;
+            }
+  
+            // Skip the rest of the line
+            charIndex = line.length; 
+            continue;
         }
-        
+          
         // --- Punctuation and grouping ---
         else if (char === "{") {
           tokens.push({ type: "LBRACE", lexeme: "{", line: globalLine, column: charIndex + 1 });
@@ -72,37 +73,37 @@ interface Token {
         
         // --- Comments: skip everything between /* and */ ---
         else if (char === "/" && charIndex + 1 < line.length && line[charIndex + 1] === "*") {
-          charIndex += 2; // Skip the "/*"
-          let commentClosed = false;
-          let commentContent = "";
-          while (localLine < lines.length) {
-            while (charIndex < line.length - 1) {
-              if (line[charIndex] === "*" && line[charIndex + 1] === "/") {
-                commentClosed = true;
-                charIndex += 2; // Skip the "*/"
-                break;
+            charIndex += 2; // Skip the "/*"
+            let commentClosed = false;
+            let commentContent = "";
+            while (localLine < lines.length) {
+              while (charIndex < line.length - 1) {
+                if (line[charIndex] === "*" && line[charIndex + 1] === "/") {
+                  commentClosed = true;
+                  charIndex += 2; // Skip the "*/"
+                  break;
+                }
+                commentContent += line[charIndex];
+                charIndex++;
               }
-              commentContent += line[charIndex];
-              charIndex++;
+              if (commentClosed) break;
+              localLine++;
+              if (localLine < lines.length) {
+                line = lines[localLine];
+                charIndex = 0;
+              }
             }
-            if (commentClosed) break;
-            localLine++;
-            if (localLine < lines.length) {
-              line = lines[localLine];
-              charIndex = 0;
+            if (!commentClosed) {
+              output += `ERROR Lexer - Error: Unterminated comment starting on line ${globalLine}. Lexing terminated.\n`;
+              errors++;
+              output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+              return { tokens, output, errors };
             }
-          }
-          if (!commentClosed) {
-            output += `ERROR Lexer - Error: Unterminated comment starting on line ${globalLine}. Lexing terminated.\n`;
-            errors++;
-            output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-            return { tokens, output, errors };
-          }
-          // Warning: if the comment content is empty (or only whitespace), issue a warning.
-          if (commentContent.trim().length === 0) {
-            output += `WARNING Lexer - Warning: line ${globalLine} - Empty comment block detected.\n\n`;
-          }
-          continue; // Skip further processing inside comment.
+            // Warning: if the comment content is empty (or only whitespace), issue a warning.
+            if (commentContent.trim().length === 0) {
+              output += `WARNING Lexer - Warning: line ${globalLine} - Empty comment block detected.\n\n`;
+            }
+            continue; // Skip further processing inside comment.
         }
         
         // --- Keywords and operators ---
@@ -164,48 +165,38 @@ interface Token {
         
         // --- String Expressions ---
         else if (char === '"') {
-            // Start of string literal
             tokens.push({ type: "LQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
             output += `DEBUG Lexer - StringExpr [ start " ] found on line ${globalLine}\n`;
             charIndex++; // move past the opening quote
-            
-            // Collect all characters until the closing quote or end-of-line
             let stringContent = "";
             while (charIndex < line.length && line[charIndex] !== '"') {
-              stringContent += line[charIndex];
+              let currentChar = line[charIndex];
+              if ((currentChar >= "a" && currentChar <= "z") || currentChar === " ") {
+                tokens.push({ type: "CHAR", lexeme: currentChar, line: globalLine, column: charIndex + 1 });
+                stringContent += currentChar;
+                output += `DEBUG Lexer - char [ ${currentChar} ] found on line ${globalLine}\n`;
+              } else {
+                errors++;
+                output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token in string: ${currentChar} Only lowercase letters a through z and spaces are allowed in strings\n`;
+                output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+                return { tokens, output, errors };
+              }
               charIndex++;
             }
-            
-            // Check if we found a closing quote
             if (charIndex < line.length && line[charIndex] === '"') {
-              // Found closing quote; now validate the collected string content
-              for (let i = 0; i < stringContent.length; i++) {
-                const c = stringContent[i];
-                if (!((c >= "a" && c <= "z") || c === " ")) {
-                  errors++;
-                  output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token in string: ${c} Only lowercase letters a through z and spaces are allowed in strings\n`;
-                  output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-                  return { tokens, output, errors };
-                }
-              }
-              // If valid, add the closing quote token.
               tokens.push({ type: "RQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
               output += `DEBUG Lexer - StringExpr [ end " ] found on line ${globalLine}\n`;
             } else {
-              // No closing quote found: report unterminated string error.
               errors++;
               output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
               output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
               return { tokens, output, errors };
             }
-            
-            // Optionally, warn if the string literal is empty.
             if (stringContent.trim().length === 0) {
               output += `WARNING Lexer - Warning: line ${globalLine} - Empty string literal detected.\n\n`;
             }
           }
           
-        
         // --- Digits ---
         else if (/[0-9]/.test(char)) {
           tokens.push({ type: "DIGIT", lexeme: char, line: globalLine, column: charIndex + 1 });
@@ -229,43 +220,34 @@ interface Token {
       }
       position++; // Account for newline
     }
-    
+  
     // Check that the program ends with "$"
     let trimmedText = progText.replace(/\s+$/, "");
     if (!trimmedText.endsWith("$")) {
-        output += `ERROR Lexer - Error: last line of program - Please complete program with "$" as your last character.\n`;
-        errors++;
-        output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-        return { tokens, output, errors };
+        output += `WARNING Lexer - Warning: last line of program does not end with "$". Extra characters will be ignored.\n\n`;
     }
-    
+  
     output += `LEXER: Lex completed with ${errors} error(s)\n\n`;
     return { tokens, output, errors };
-  }
+}
   
-  
-  // ----------------------- Program Processing ----------------------- //
-  // This function splits the input (which may contain multiple programs separated by "$"),
-  // computes a global line offset for each program, and then lexes and parses each.
-  function processPrograms() {
+// ----------------------- Program Processing ----------------------- //
+// This function splits the input (which may contain multiple programs separated by "$"),
+// computes a global line offset for each program, and then lexes and parses each.
+function processPrograms() {
     let finalOutput = "DEBUG: Running in verbose mode \n\n";
     const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
     const text = inputElement.value;
-    if (!text.trim().endsWith("$")) {
-      compileCode(`ERROR: Last character of input must be "$".\n`);
-      return;
-    }
     // Split input into raw programs (preserving newlines)
-    const rawPrograms = text.split("$");
+    let rawPrograms = text.split("$");
     const programs: { program: string, offset: number }[] = [];
     let cumulativeLineCount = 0;
     for (const raw of rawPrograms) {
-      // Only consider parts that are not empty when trimmed.
-      if (raw.trim().length > 0) {
-        programs.push({ program: raw + "$", offset: cumulativeLineCount });
-      }
-      // Update cumulativeLineCount by counting newlines in raw.
-      cumulativeLineCount += (raw.match(/\n/g) || []).length;
+        if (raw.trim().length > 0) {
+            programs.push({ program: raw, offset: cumulativeLineCount });
+        }
+        
+        cumulativeLineCount += (raw.match(/\n/g) || []).length;
     }
     let programNumber = 1;
     for (const { program, offset } of programs) {
@@ -284,19 +266,17 @@ interface Token {
             compileOutput += `\nCST for program ${programNumber}:\n` + result.tree.print();
           }
         } else {
-          // If there were lexing errors, skip parsing and output the following messages:
           compileOutput += `PARSER: Skipped due to LEXER error(s)\n`;
           compileOutput += `CST for program ${programNumber}: Skipped due to LEXER error(s).\n`;
         }
         finalOutput += compileOutput + "\n";
         programNumber++;
-      }
-      
+    }
     compileCode(finalOutput);
-  }
+}
   
-  // ----------------------- Parser and CST Classes ----------------------- //
-  class Parser {
+// ----------------------- Parser and CST Classes ----------------------- //
+class Parser {
     private tokens: Token[];
     private current: number = 0;
     public output: string = "";
@@ -314,22 +294,20 @@ interface Token {
   
     // Begin parsing.
     public parse(): { output: string, tree: CST | null, error: string | null } {
-        try {
-          this.output += "PARSER: parse() called\n";
-          this.parseProgram();
-          return { output: this.output, tree: this.cst, error: null };
-        } catch (error) {
-          if (error instanceof Error) {
-            this.output += `\nPARSER: Parse failed with 1 error\n`;
-            return { output: this.output, tree: null, error: error.message };
-          } else {
-            this.output += `\nPARSER: Parse failed with 1 error\n`;
-            return { output: this.output, tree: null, error: "An unknown error occurred" };
-          }
+      try {
+        this.output += "PARSER: parse() called\n";
+        this.parseProgram();
+        return { output: this.output, tree: this.cst, error: null };
+      } catch (error) {
+        if (error instanceof Error) {
+          this.output += `\nPARSER: Parse failed with 1 error\n`;
+          return { output: this.output, tree: null, error: error.message };
+        } else {
+          this.output += `\nPARSER: Parse failed with 1 error\n`;
+          return { output: this.output, tree: null, error: "An unknown error occurred" };
         }
       }
-      
-    
+    }
   
     // Program ::= Block EOP
     private parseProgram() {
@@ -342,30 +320,26 @@ interface Token {
   
     // Block ::= { StatementList }
     private parseBlock(): void {
-        this.output += "PARSER: parseBlock()\n";
-        this.cst.addNode("branch", "Block");
-        this.match("LBRACE");
-        // Create the Statement List node once.
-        this.cst.addNode("branch", "Statement List");
-        this.parseStatementList();
-        this.cst.moveUp();  // finish Statement List
-        this.match("RBRACE");
-        this.cst.moveUp();
-      }
-      
-      
+      this.output += "PARSER: parseBlock()\n";
+      this.cst.addNode("branch", "Block");
+      this.match("LBRACE");
+      // Create the Statement List node once.
+      this.cst.addNode("branch", "Statement List");
+      this.parseStatementList();
+      this.cst.moveUp();  // finish Statement List
+      this.match("RBRACE");
+      this.cst.moveUp();
+    }
   
     // StatementList ::= Statement StatementList | ε
     private parseStatementList(): void {
-        this.output += "PARSER: parseStatementList()\n";
-        const token = this.peekToken();
-        if (token && (token.type !== "RBRACE" && token.type !== "EOP")) {
-          this.parseStatement();
-          this.parseStatementList();
-        }
-        // When the next token is RBRACE/EOP, do nothing (no node added)
+      this.output += "PARSER: parseStatementList()\n";
+      const token = this.peekToken();
+      if (token && (token.type !== "RBRACE" && token.type !== "EOP")) {
+        this.parseStatement();
+        this.parseStatementList();
       }
-      
+    }
   
     // Statement ::= PrintStatement | AssignmentStatement | VarDecl | WhileStatement | IfStatement | Block
     private parseStatement(): void {
@@ -546,10 +520,10 @@ interface Token {
         throw new Error(`PARSER ERROR: Expected ${expected} but got ${token ? token.lexeme : "EOF"} at line ${token?.line}`);
       }
     }
-  }
+}
   
-  // CST Classes
-  class CSTNode {
+// CST Classes
+class CSTNode {
     label: string;
     children: CSTNode[];
     parent: CSTNode | null;
@@ -559,9 +533,9 @@ interface Token {
       this.children = [];
       this.parent = null;
     }
-  }
+}
   
-  class CST {
+class CST {
     root: CSTNode | null;
     current: CSTNode | null;
   
@@ -617,13 +591,10 @@ interface Token {
         }
         return result;
     }
-    
-      
-      
-  }
+}
   
-  // ----------------------- DOM Event Listener ----------------------- //
-  document.addEventListener("DOMContentLoaded", () => {
+// ----------------------- DOM Event Listener ----------------------- //
+document.addEventListener("DOMContentLoaded", () => {
     const compileBtn = document.getElementById("compile-btn");
     if (!compileBtn) {
       console.error("Compile button not found! Check that the id is 'compile-btn' in your HTML.");
@@ -638,5 +609,4 @@ interface Token {
         compileCode("Compilation error: " + err);
       }
     });
-  });
-  
+});
