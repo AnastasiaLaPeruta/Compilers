@@ -164,37 +164,47 @@ interface Token {
         
         // --- String Expressions ---
         else if (char === '"') {
-          tokens.push({ type: "LQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
-          output += `DEBUG Lexer - StringExpr [ start " ] found on line ${globalLine}\n`;
-          charIndex++; // move past the opening quote
-          let stringContent = "";
-          while (charIndex < line.length && line[charIndex] !== '"') {
-            let currentChar = line[charIndex];
-            if ((currentChar >= "a" && currentChar <= "z") || currentChar === " ") {
-              tokens.push({ type: "CHAR", lexeme: currentChar, line: globalLine, column: charIndex + 1 });
-              stringContent += currentChar;
-              output += `DEBUG Lexer - char [ ${currentChar} ] found on line ${globalLine}\n`;
+            // Start of string literal
+            tokens.push({ type: "LQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
+            output += `DEBUG Lexer - StringExpr [ start " ] found on line ${globalLine}\n`;
+            charIndex++; // move past the opening quote
+            
+            // Collect all characters until the closing quote or end-of-line
+            let stringContent = "";
+            while (charIndex < line.length && line[charIndex] !== '"') {
+              stringContent += line[charIndex];
+              charIndex++;
+            }
+            
+            // Check if we found a closing quote
+            if (charIndex < line.length && line[charIndex] === '"') {
+              // Found closing quote; now validate the collected string content
+              for (let i = 0; i < stringContent.length; i++) {
+                const c = stringContent[i];
+                if (!((c >= "a" && c <= "z") || c === " ")) {
+                  errors++;
+                  output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token in string: ${c} Only lowercase letters a through z and spaces are allowed in strings\n`;
+                  output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
+                  return { tokens, output, errors };
+                }
+              }
+              // If valid, add the closing quote token.
+              tokens.push({ type: "RQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
+              output += `DEBUG Lexer - StringExpr [ end " ] found on line ${globalLine}\n`;
             } else {
+              // No closing quote found: report unterminated string error.
               errors++;
-              output += `ERROR Lexer - Error: line ${globalLine} Unrecognized Token: ${currentChar} Only lowercase letters a through z and spaces are allowed in strings\n`;
+              output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
               output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
               return { tokens, output, errors };
             }
-            charIndex++;
+            
+            // Optionally, warn if the string literal is empty.
+            if (stringContent.trim().length === 0) {
+              output += `WARNING Lexer - Warning: line ${globalLine} - Empty string literal detected.\n\n`;
+            }
           }
-          if (charIndex < line.length && line[charIndex] === '"') {
-            tokens.push({ type: "RQUOTE", lexeme: "\"", line: globalLine, column: charIndex + 1 });
-            output += `DEBUG Lexer - StringExpr [ end " ] found on line ${globalLine}\n`;
-          } else {
-            errors++;
-            output += `ERROR Lexer - Error: Unterminated StringExpr starting on line ${globalLine}. Lexing terminated due to fatal error.\n`;
-            output += `Error Lexer - Lex failed with ${errors} error(s)\n\n`;
-            return { tokens, output, errors };
-          }
-          if (stringContent.trim().length === 0) {
-            output += `WARNING Lexer - Warning: line ${globalLine} - Empty string literal detected.\n\n`;
-          }
-        }
+          
         
         // --- Digits ---
         else if (/[0-9]/.test(char)) {
