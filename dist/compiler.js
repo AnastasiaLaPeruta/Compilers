@@ -560,6 +560,10 @@ class CST {
     print(node = this.root, depth = 0) {
         if (!node)
             return "";
+        // Skip nodes that represent an epsilon production.
+        if (node.label === "ε" || node.label === "Îµ") {
+            return "";
+        }
         const indent = "-".repeat(depth);
         let displayLabel;
         // If it's a punctuation token, use square brackets

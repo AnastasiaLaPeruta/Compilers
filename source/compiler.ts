@@ -586,6 +586,10 @@ interface Token {
   
     print(node: CSTNode | null = this.root, depth: number = 0): string {
         if (!node) return "";
+        // Skip nodes that represent an epsilon production.
+        if (node.label === "ε" || node.label === "Îµ") {
+          return "";
+        }
         const indent = "-".repeat(depth);
         let displayLabel: string;
         
@@ -604,7 +608,8 @@ interface Token {
           result += this.print(child, depth + 1);
         }
         return result;
-      }
+    }
+    
       
       
   }
