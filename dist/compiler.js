@@ -583,6 +583,25 @@ class CST {
         return result;
     }
 }
+// ----------------------- AST Classes ----------------------- //
+class ASTNode {
+    constructor(label) {
+        this.label = label;
+        this.children = [];
+    }
+    addChild(child) {
+        this.children.push(child);
+    }
+    // recursively prints the AST with indentation based on depth
+    print(depth = 0) {
+        const indent = "-".repeat(depth);
+        let result = `${indent}<${this.label}>\n`;
+        for (const child of this.children) {
+            result += child.print(depth + 1);
+        }
+        return result;
+    }
+}
 // ----------------------- DOM Event Listener ----------------------- //
 document.addEventListener("DOMContentLoaded", () => {
     const compileBtn = document.getElementById("compile-btn");

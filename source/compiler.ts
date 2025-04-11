@@ -1,4 +1,5 @@
-// ChatGPT gave initial suggestion for tracking the line and position number of the input, also utilized for parser functionality and CST
+// ChatGPT gave initial suggestion for tracking the line and position number of the input, also utilized for parser functionality and CST, and
+// assisted throughout
 // ----------------------- Token Interface ----------------------- //
 interface Token {
     type: string;
@@ -604,6 +605,32 @@ class CST {
         return result;
     }
 }
+
+// ----------------------- AST Classes ----------------------- //
+class ASTNode {
+  label: string;
+  children: ASTNode[];
+
+  constructor(label: string) {
+    this.label = label;
+    this.children = [];
+  }
+
+  addChild(child: ASTNode): void {
+    this.children.push(child);
+  }
+
+  // recursively prints the AST with indentation based on depth
+  print(depth: number = 0): string {
+    const indent = "-".repeat(depth);
+    let result = `${indent}<${this.label}>\n`;
+    for (const child of this.children) {
+      result += child.print(depth + 1);
+    }
+    return result;
+  }
+}
+
   
 // ----------------------- DOM Event Listener ----------------------- //
 document.addEventListener("DOMContentLoaded", () => {
