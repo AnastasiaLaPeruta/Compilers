@@ -581,18 +581,18 @@ class CST {
   
     print(node: CSTNode | null = this.root, depth: number = 0): string {
         if (!node) return "";
-        // Skip nodes that represent an epsilon production.
+        // skip nodes that represent an epsilon production, inlcuding Îµ was ChatGPT's suggestion
         if (node.label === "ε" || node.label === "Îµ") {
           return "";
         }
         const indent = "-".repeat(depth);
         let displayLabel: string;
         
-        // If it's a punctuation token, use square brackets
+        // if it's a punctuation token, use square brackets
         if (node.label === "{" || node.label === "}" || node.label === "$") {
           displayLabel = `[${node.label}]`;
         } else if (node.label === "StatementList") {
-          // Replace "StatementList" with "Statement List"
+          // replace "StatementList" with "Statement List"
           displayLabel = `<Statement List>`;
         } else {
           displayLabel = `<${node.label}>`;
@@ -630,6 +630,48 @@ class ASTNode {
     return result;
   }
 }
+
+// ----------------------- CST to AST Conversion ----------------------- //
+function buildASTFromCST(cstNode: CSTNode): ASTNode | null {
+  // ignore nodes that represent epsilon
+  if (!cstNode || cstNode.label === "ε" || cstNode.label === "Îµ") {
+    return null;
+  }
+
+  // list of CST labels that aren't needed
+  const irrelevantLabels = ["{", "}", "(", ")", "$", "Statement List"];
+
+  if (irrelevantLabels.includes(cstNode.label)) {
+    // instead of creating an AST node for this CST node, process its children
+    let aggregateNode: ASTNode | null = null;
+    for (const child of cstNode.children) {
+      const childAST = buildASTFromCST(child);
+      if (childAST) {
+        if (!aggregateNode) {
+          // start with first valid AST child
+          aggregateNode = childAST;
+        } else {
+          // add subsequent child nodes
+          aggregateNode.addChild(childAST);
+        }
+      }
+    }
+    return aggregateNode;
+  }
+
+  // create an AST node for the current CST node
+  const astNode = new ASTNode(cstNode.label);
+
+  // recursively process and add the children
+  for (const child of cstNode.children) {
+    const childAST = buildASTFromCST(child);
+    if (childAST) {
+      astNode.addChild(childAST);
+    }
+  }
+  return astNode;
+}
+
 
   
 // ----------------------- DOM Event Listener ----------------------- //
