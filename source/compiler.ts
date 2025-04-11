@@ -277,14 +277,29 @@ function processPrograms() {
           } else if (result.tree) {
             compileOutput += `PARSER: Parse completed successfully\n`;
             compileOutput += `\nCST for program ${programNumber}:\n` + result.tree.print();
+        
+            // --- AST Generation --- //
+            if (result.tree.root) {
+              const astRoot = buildASTFromCST(result.tree.root);
+              if (astRoot) {
+                compileOutput += `\nAST for program ${programNumber}:\n` + astRoot.print();
+              } else {
+                compileOutput += `\nAST for program ${programNumber}: AST generation returned no nodes.\n`;
+              }
+            }
           }
         } else {
+          // if there are lexer errors, skip parsing
           compileOutput += `PARSER: Skipped due to LEXER error(s)\n`;
           compileOutput += `CST for program ${programNumber}: Skipped due to LEXER error(s).\n`;
         }
+        
         finalOutput += compileOutput + "\n";
         programNumber++;
     }
+
+
+
     compileCode(finalOutput);
 }
   

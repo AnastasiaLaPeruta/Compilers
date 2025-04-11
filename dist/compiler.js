@@ -268,9 +268,20 @@ function processPrograms() {
             else if (result.tree) {
                 compileOutput += `PARSER: Parse completed successfully\n`;
                 compileOutput += `\nCST for program ${programNumber}:\n` + result.tree.print();
+                // --- AST Generation --- //
+                if (result.tree.root) {
+                    const astRoot = buildASTFromCST(result.tree.root);
+                    if (astRoot) {
+                        compileOutput += `\nAST for program ${programNumber}:\n` + astRoot.print();
+                    }
+                    else {
+                        compileOutput += `\nAST for program ${programNumber}: AST generation returned no nodes.\n`;
+                    }
+                }
             }
         }
         else {
+            // if there are lexer errors, skip parsing
             compileOutput += `PARSER: Skipped due to LEXER error(s)\n`;
             compileOutput += `CST for program ${programNumber}: Skipped due to LEXER error(s).\n`;
         }
@@ -559,16 +570,18 @@ class CST {
     print(node = this.root, depth = 0) {
         if (!node)
             return "";
-        // Skip nodes that represent an epsilon production, inlcuding Îµ was ChatGPT's suggestion
+        // skip nodes that represent an epsilon production, inlcuding Îµ was ChatGPT's suggestion
         if (node.label === "ε" || node.label === "Îµ") {
             return "";
         }
         const indent = "-".repeat(depth);
         let displayLabel;
+        // if it's a punctuation token, use square brackets
         if (node.label === "{" || node.label === "}" || node.label === "$") {
             displayLabel = `[${node.label}]`;
         }
         else if (node.label === "StatementList") {
+            // replace "StatementList" with "Statement List"
             displayLabel = `<Statement List>`;
         }
         else {
@@ -606,29 +619,29 @@ function buildASTFromCST(cstNode) {
     if (!cstNode || cstNode.label === "ε" || cstNode.label === "Îµ") {
         return null;
     }
-    // List of CST labels that are considered syntactic noise.
+    // list of CST labels that aren't needed
     const irrelevantLabels = ["{", "}", "(", ")", "$", "Statement List"];
     if (irrelevantLabels.includes(cstNode.label)) {
-        // Instead of creating an AST node for this CST node, process its children.
+        // instead of creating an AST node for this CST node, process its children
         let aggregateNode = null;
         for (const child of cstNode.children) {
             const childAST = buildASTFromCST(child);
             if (childAST) {
                 if (!aggregateNode) {
-                    // Start with the first valid AST child.
+                    // start with first valid AST child
                     aggregateNode = childAST;
                 }
                 else {
-                    // Add subsequent child nodes.
+                    // add subsequent child nodes
                     aggregateNode.addChild(childAST);
                 }
             }
         }
         return aggregateNode;
     }
-    // Create an AST node for the current CST node.
+    // create an AST node for the current CST node
     const astNode = new ASTNode(cstNode.label);
-    // Recursively process and add the children.
+    // recursively process and add the children
     for (const child of cstNode.children) {
         const childAST = buildASTFromCST(child);
         if (childAST) {
