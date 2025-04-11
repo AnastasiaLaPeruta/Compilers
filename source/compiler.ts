@@ -244,7 +244,7 @@ function processPrograms() {
     const inputElement = document.getElementById("userInput") as HTMLTextAreaElement;
     const text = inputElement.value;
     // Split input into raw programs, preserving newlines
-    let rawPrograms = text.split("$");.
+    let rawPrograms = text.split("$");
     const programs: { program: string, offset: number }[] = [];
     let cumulativeLineCount = 0;
     for (let i = 0; i < rawPrograms.length; i++) {
