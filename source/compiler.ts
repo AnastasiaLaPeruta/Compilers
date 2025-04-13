@@ -648,36 +648,106 @@ class ASTNode {
 
 // ----------------------- CST to AST Conversion ----------------------- //
 function buildASTFromCST(cstNode: CSTNode): ASTNode | null {
-  // ignore nodes that represent epsilon
+  // suggested by ChatGPT
   if (!cstNode || cstNode.label === "ε" || cstNode.label === "Îµ") {
     return null;
   }
 
-  // list of CST labels that aren't needed
-  const irrelevantLabels = ["{", "}", "(", ")", "$", "Statement List"];
-
-  if (irrelevantLabels.includes(cstNode.label)) {
-    // instead of creating an AST node for this CST node, process its children
-    let aggregateNode: ASTNode | null = null;
+  // nodes that have no semantic meaning.
+  const skipLabels = new Set(["Statement", "Statement List", "{", "}", "(", ")", "$"]);
+  if (skipLabels.has(cstNode.label)) {
+    let aggregated: ASTNode | null = null;
     for (const child of cstNode.children) {
       const childAST = buildASTFromCST(child);
       if (childAST) {
-        if (!aggregateNode) {
-          // start with first valid AST child
-          aggregateNode = childAST;
+        if (!aggregated) {
+          aggregated = childAST;
         } else {
-          // add subsequent child nodes
-          aggregateNode.addChild(childAST);
+          aggregated.addChild(childAST);
         }
       }
     }
-    return aggregateNode;
+    return aggregated;
   }
 
-  // create an AST node for the current CST node
-  const astNode = new ASTNode(cstNode.label);
+  // special transformation for Variable Declarations
+  if (cstNode.label === "VarDecl") {
+    const astNode = new ASTNode("Variable Declaration");
 
-  // recursively process and add the children
+    let typeAST: ASTNode | null = null;
+    let idAST: ASTNode | null = null;
+    for (const child of cstNode.children) {
+      // looks for type tokens
+      if (!typeAST && (child.label === "int" || child.label === "string" || child.label === "boolean")) {
+        typeAST = new ASTNode(child.label);
+      }
+      // looks for the identifier token
+      if (!idAST && child.label !== "int" && child.label !== "string" && child.label !== "boolean") {
+        idAST = new ASTNode(child.label);
+      }
+    }
+    if (typeAST) astNode.addChild(typeAST);
+    if (idAST) astNode.addChild(idAST);
+    return astNode;
+  }
+
+  // special transformation for Assignment Statements
+  if (cstNode.label === "AssignmentStatement") {
+    const astNode = new ASTNode("Assignment Statement");
+    let idAST: ASTNode | null = null;
+    let exprAST: ASTNode | null = null;
+  
+    for (const child of cstNode.children) {
+      // skip the assignment operator token
+      if (child.label === "=") continue;
+  
+      if (!idAST) {
+        // the first non-"=" token is taken as the identifier
+        idAST = new ASTNode(child.label);
+      } else if (!exprAST) {
+
+        let tempAST = buildASTFromCST(child);
+        if (tempAST && tempAST.label === "Expr" && tempAST.children.length === 1) {
+          exprAST = tempAST.children[0]; 
+        } else {
+          exprAST = tempAST;
+        }
+      }
+    }
+    if (idAST) astNode.addChild(idAST);
+    if (exprAST) astNode.addChild(exprAST);
+    return astNode;
+  }
+  
+
+
+  // special transformation for Print Statements
+  if (cstNode.label === "PrintStatement") {
+    const astNode = new ASTNode("Print Statement");
+    // filter out the print keyword and parentheses
+    for (const child of cstNode.children) {
+      if (child.label === "print" || child.label === "(" || child.label === ")") {
+        continue;
+      }
+      const childAST = buildASTFromCST(child);
+      if (childAST) {
+        astNode.addChild(childAST);
+      }
+    }
+    return astNode;
+  }
+
+  // mapping for other nodes
+  const labelMap: { [key: string]: string } = {
+    "Program": "BLOCK",
+    "Block": "BLOCK",
+    "WhileStatement": "While Statement",
+    "IfStatement": "If Statement",
+  };
+  const newLabel = labelMap[cstNode.label] || cstNode.label;
+  const astNode = new ASTNode(newLabel);
+
+  // recursively add transformed children
   for (const child of cstNode.children) {
     const childAST = buildASTFromCST(child);
     if (childAST) {
@@ -686,6 +756,8 @@ function buildASTFromCST(cstNode: CSTNode): ASTNode | null {
   }
   return astNode;
 }
+
+
 
 
   
