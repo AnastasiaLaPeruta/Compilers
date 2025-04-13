@@ -603,18 +603,26 @@ class ASTNode {
     addChild(child) {
         this.children.push(child);
     }
-    // recursively prints the AST with indentation based on depth
-    print(depth = 0) {
-        const indent = "-".repeat(depth);
+    // recursively prints the AST
+    print(indent = 0, parentIsBlock = false) {
+        // if this node is a BLOCK and its parent is also BLOCK, then do not increase the indent (or even decrease by one)
+        const currentIndent = (parentIsBlock && this.label === "BLOCK")
+            ? "-".repeat(indent > 0 ? indent - 1 : 0)
+            : "-".repeat(indent);
         let result = "";
-        // if a node has no children, assume it’s a token and print with square brackets
         if (this.children.length === 0) {
-            result += `${indent}[ ${this.label} ]\n`;
+            // leaf node: show in square brackets
+            result += `${currentIndent}[ ${this.label} ]\n`;
         }
         else {
-            result += `${indent}< ${this.label} >\n`;
+            // branch node: show in angle brackets
+            result += `${currentIndent}< ${this.label} >\n`;
+            // pass whether the current node is a BLOCK to the children
+            const isCurrentBlock = this.label === "BLOCK";
             for (const child of this.children) {
-                result += child.print(depth + 1);
+                // increase indent by 1 normally, but if the current node is BLOCK and
+                // the child is also BLOCK, then we pass the parent's flag so the child stays at the same level
+                result += child.print(indent + 1, isCurrentBlock);
             }
         }
         return result;
@@ -645,10 +653,12 @@ function buildASTFromCST(cstNode) {
     if (!cstNode || cstNode.label === "ε" || cstNode.label === "Îµ") {
         return null;
     }
-    // Special handling for the Program node: ignore the EOP token ("$")
+    // special handling for the Program node: ignore the EOP token ("$")
     if (cstNode.label === "Program") {
+        // filter out any EOP token
         const meaningfulChildren = cstNode.children.filter(child => child.label !== "$");
         if (meaningfulChildren.length === 1) {
+            // directly return the AST conversion of the single meaningful child
             return buildASTFromCST(meaningfulChildren[0]);
         }
     }
@@ -740,6 +750,16 @@ function buildASTFromCST(cstNode) {
                 childAST.children.length === 1) {
                 childAST = childAST.children[0];
             }
+            if (childAST) {
+                astNode.addChild(childAST);
+            }
+        }
+        return astNode;
+    }
+    if (cstNode.label === "Block") {
+        const astNode = new ASTNode("BLOCK");
+        for (const child of cstNode.children) {
+            const childAST = buildASTFromCST(child);
             if (childAST) {
                 astNode.addChild(childAST);
             }
