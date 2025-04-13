@@ -234,7 +234,7 @@ function processPrograms() {
     let finalOutput = "DEBUG: Running in verbose mode \n\n";
     const inputElement = document.getElementById("userInput");
     const text = inputElement.value;
-    // Split input into raw programs, preserving newlines
+    // split input into raw programs, preserving newlines
     let rawPrograms = text.split("$");
     const programs = [];
     let cumulativeLineCount = 0;
@@ -242,11 +242,11 @@ function processPrograms() {
         const raw = rawPrograms[i];
         if (raw.trim().length > 0) {
             if (i < rawPrograms.length - 1) {
-                // For every part except the last, append "$" back
+                // for every part except the last, append "$" back
                 programs.push({ program: raw + "$", offset: cumulativeLineCount });
             }
             else {
-                // Last program: leave it as is
+                // last program: leave it as is
                 programs.push({ program: raw, offset: cumulativeLineCount });
             }
         }
@@ -269,10 +269,18 @@ function processPrograms() {
                 compileOutput += `PARSER: Parse completed successfully\n`;
                 compileOutput += `\nCST for program ${programNumber}:\n` + result.tree.print();
                 // --- AST Generation --- //
-                if (result.tree.root) {
-                    const astRoot = buildASTFromCST(result.tree.root);
+                if (result.tree) {
+                    const astRoot = buildASTFromCST(result.tree.root); // generate the AST from the CST
                     if (astRoot) {
                         compileOutput += `\nAST for program ${programNumber}:\n` + astRoot.print();
+                        // --- Semantic Analysis --- //
+                        const semanticAnalyzer = new SemanticAnalyzer();
+                        semanticAnalyzer.analyze(astRoot);
+                        const errorCount = semanticAnalyzer.errors.length;
+                        const warningCount = semanticAnalyzer.warnings.length; // will be 0 if no warnings are added
+                        compileOutput += `\nProgram ${programNumber} Semantic Analysis\n`;
+                        compileOutput += `Program ${programNumber} Semantic Analysis produced\n`;
+                        compileOutput += `${errorCount} error(s) and ${warningCount} warning(s)\n`;
                     }
                     else {
                         compileOutput += `\nAST for program ${programNumber}: AST generation returned no nodes.\n`;
@@ -626,6 +634,178 @@ class ASTNode {
             }
         }
         return result;
+    }
+}
+class SymbolTable {
+    constructor() {
+        // start with a global scope
+        this.table = [new Map()];
+        this.currentScope = 0;
+        this.errors = [];
+    }
+    enterScope() {
+        this.table.push(new Map());
+        this.currentScope++;
+    }
+    exitScope() {
+        this.table.pop();
+        this.currentScope--;
+    }
+    addSymbol(name, type, line, column) {
+        // in your grammar, identifiers are a single character
+        // use default values (0) for line and column if not available
+        const current = this.table[this.table.length - 1];
+        if (current.has(name)) {
+            this.errors.push(`Redeclaration error: '${name}' already declared in scope ${this.currentScope} at line ${line}, column ${column}.`);
+        }
+        else {
+            current.set(name, { name, type, scope: this.currentScope, line, column });
+        }
+    }
+    lookup(name) {
+        // search from the innermost scope to the outermost
+        for (let i = this.table.length - 1; i >= 0; i--) {
+            const entry = this.table[i].get(name);
+            if (entry !== undefined)
+                return entry;
+        }
+        return undefined;
+    }
+}
+class SemanticAnalyzer {
+    constructor() {
+        this.symbolTable = new SymbolTable();
+        this.errors = [];
+        this.warnings = [];
+    }
+    // entry point: pass the AST root node
+    analyze(node) {
+        this.traverse(node);
+        // includes any errors that arose during symbol table operations
+        this.errors.push(...this.symbolTable.errors);
+    }
+    // recursively traverse the AST to perform checking.
+    traverse(node) {
+        if (!node)
+            return;
+        switch (node.label) {
+            case "BLOCK":
+                this.symbolTable.enterScope();
+                for (const child of node.children) {
+                    this.traverse(child);
+                }
+                this.symbolTable.exitScope();
+                break;
+            case "Variable Declaration":
+                this.handleVarDecl(node);
+                break;
+            case "Assignment Statement":
+                this.handleAssignment(node);
+                break;
+            case "Print Statement":
+                // for print statements, simply evaluate the expression
+                if (node.children.length > 0) {
+                    this.evaluateExpression(node.children[0]);
+                }
+                break;
+            case "While Statement":
+                this.handleWhile(node);
+                break;
+            case "If Statement":
+                this.handleIf(node);
+                break;
+            default:
+                // for all other nodes, recursively traverse their children
+                for (const child of node.children) {
+                    this.traverse(child);
+                }
+                break;
+        }
+    }
+    handleVarDecl(node) {
+        // expect node.children[0] to be the type and node.children[1] to be the identifier
+        if (node.children.length >= 2) {
+            const typeNode = node.children[0];
+            const idNode = node.children[1];
+            const type = typeNode.label;
+            const name = idNode.label;
+            this.symbolTable.addSymbol(name, type, 0, 0);
+        }
+    }
+    handleAssignment(node) {
+        // expected format: first child is the identifier, second child is the expression
+        if (node.children.length >= 2) {
+            const idNode = node.children[0];
+            const exprNode = node.children[1];
+            const entry = this.symbolTable.lookup(idNode.label);
+            if (!entry) {
+                this.errors.push(`Semantic Error: Variable '${idNode.label}' used before declaration.`);
+            }
+            else {
+                const exprType = this.evaluateExpression(exprNode);
+                if (exprType && exprType !== entry.type) {
+                    this.errors.push(`Semantic Error: Type mismatch in assignment to '${idNode.label}'. Expected ${entry.type}, found ${exprType}.`);
+                }
+            }
+        }
+    }
+    handleWhile(node) {
+        // while: first child is the boolean condition, second child is the block
+        if (node.children.length >= 2) {
+            const condition = node.children[0];
+            const block = node.children[1];
+            const condType = this.evaluateExpression(condition);
+            if (condType !== "boolean") {
+                this.errors.push(`Semantic Error: While condition must be boolean, found ${condType}.`);
+            }
+            this.traverse(block);
+        }
+    }
+    handleIf(node) {
+        // if: first child is the boolean condition, second child is the block
+        if (node.children.length >= 2) {
+            const condition = node.children[0];
+            const block = node.children[1];
+            const condType = this.evaluateExpression(condition);
+            if (condType !== "boolean") {
+                this.errors.push(`Semantic Error: If condition must be boolean, found ${condType}.`);
+            }
+            this.traverse(block);
+        }
+    }
+    // evaluate expressions to infer their types
+    evaluateExpression(node) {
+        if (!node)
+            return null;
+        // if node is a leaf (literal or identifier)
+        if (node.children.length === 0) {
+            // if the label is a digit literal
+            if (/^[0-9]+$/.test(node.label)) {
+                return "int";
+            }
+            // if the label is a single-character identifier
+            if (/^[a-z]$/.test(node.label)) {
+                const entry = this.symbolTable.lookup(node.label);
+                return entry ? entry.type : null;
+            }
+            // otherwise, treat it as a string literal
+            return "string";
+        }
+        // if node represents an IntExpr
+        if (node.label === "IntExpr") {
+            return "int";
+        }
+        // if node represents a BooleanExpr
+        if (node.label === "BooleanExpr") {
+            return "boolean";
+        }
+        // for a generic expression node, evaluate its children
+        for (const child of node.children) {
+            const type = this.evaluateExpression(child);
+            if (type)
+                return type;
+        }
+        return null;
     }
 }
 function gatherString(cstNode) {
