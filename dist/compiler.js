@@ -281,10 +281,16 @@ function processPrograms() {
                         compileOutput += `\nProgram ${programNumber} Semantic Analysis\n`;
                         compileOutput += `Program ${programNumber} Semantic Analysis produced\n`;
                         compileOutput += `${errorCount} error(s) and ${warningCount} warning(s)\n`;
+                        if (errorCount === 0) {
+                            compileOutput += "\n" + semanticAnalyzer.symbolTable.display(programNumber);
+                        }
+                        else {
+                            compileOutput += 'Program ${programNumber} Symbol Table not produced due to error(s) detected by semantic analysis\n';
+                        }
                     }
-                    else {
-                        compileOutput += `\nAST for program ${programNumber}: AST generation returned no nodes.\n`;
-                    }
+                }
+                else {
+                    compileOutput += `\nAST for program ${programNumber}: AST generation returned no nodes.\n`;
                 }
             }
         }
@@ -638,7 +644,6 @@ class ASTNode {
 }
 class SymbolTable {
     constructor() {
-        // start with a global scope
         this.table = [new Map()];
         this.currentScope = 0;
         this.errors = [];
@@ -652,8 +657,6 @@ class SymbolTable {
         this.currentScope--;
     }
     addSymbol(name, type, line, column) {
-        // in your grammar, identifiers are a single character
-        // use default values (0) for line and column if not available
         const current = this.table[this.table.length - 1];
         if (current.has(name)) {
             this.errors.push(`Redeclaration error: '${name}' already declared in scope ${this.currentScope} at line ${line}, column ${column}.`);
@@ -663,13 +666,26 @@ class SymbolTable {
         }
     }
     lookup(name) {
-        // search from the innermost scope to the outermost
         for (let i = this.table.length - 1; i >= 0; i--) {
             const entry = this.table[i].get(name);
             if (entry !== undefined)
                 return entry;
         }
         return undefined;
+    }
+    display(programNumber) {
+        let output = `Program ${programNumber} Symbol Table\n`;
+        output += "--------------------------------------\n";
+        output += "Name  Type    Scope Line\n";
+        output += "--------------------------------------\n";
+        // loop over each scope in the order they were created
+        for (let i = 0; i < this.table.length; i++) {
+            for (const symbolEntry of this.table[i].values()) {
+                // each row: name, type, scope, line
+                output += `${symbolEntry.name}  ${symbolEntry.type}  ${symbolEntry.scope}  ${symbolEntry.line}\n`;
+            }
+        }
+        return output;
     }
 }
 class SemanticAnalyzer {
