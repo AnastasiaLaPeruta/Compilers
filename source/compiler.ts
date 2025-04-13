@@ -638,13 +638,45 @@ class ASTNode {
   // recursively prints the AST with indentation based on depth
   print(depth: number = 0): string {
     const indent = "-".repeat(depth);
-    let result = `${indent}<${this.label}>\n`;
-    for (const child of this.children) {
-      result += child.print(depth + 1);
+    let result = "";
+    // if a node has no children, assume it’s a token and print with square brackets
+    if (this.children.length === 0) {
+      result += `${indent}[ ${this.label}\n`;
+    } else {
+      result += `${indent}< ${this.label} >\n`;
+      for (const child of this.children) {
+        result += child.print(depth + 1);
+      }
     }
     return result;
   }
+  
+  
 }
+
+function gatherString(cstNode: CSTNode): string {
+  let result = "";
+
+  // if we see a child that is a single character or space, we add it to 'result'
+  // if we see 'CharList' or more nested nodes, we recurse
+  for (const child of cstNode.children) {
+    // skips LQUOTE, RQUOTE if present
+    if (child.label === "\"" || child.label === "LQUOTE" || child.label === "RQUOTE") {
+      continue;
+    }
+
+    // if it's a single lowercase character or space, append it
+    if (child.label.length === 1 && /[a-z ]/.test(child.label)) {
+      result += child.label;
+    }
+    // if it's a deeper node (like "CharList" or "StringExpr"), recurse
+    else {
+      result += gatherString(child);
+    }
+  }
+  return result;
+}
+
 
 // ----------------------- CST to AST Conversion ----------------------- //
 function buildASTFromCST(cstNode: CSTNode): ASTNode | null {
@@ -652,6 +684,14 @@ function buildASTFromCST(cstNode: CSTNode): ASTNode | null {
   if (!cstNode || cstNode.label === "ε" || cstNode.label === "Îµ") {
     return null;
   }
+
+  if (cstNode.label === "StringExpr") {
+    // collect all characters from the CST subtree
+    const fullString = gatherString(cstNode);
+    // return a single leaf node with that entire string
+    return new ASTNode(fullString);
+  }
+  
 
   // nodes that have no semantic meaning.
   const skipLabels = new Set(["Statement", "Statement List", "{", "}", "(", ")", "$"]);
@@ -702,22 +742,27 @@ function buildASTFromCST(cstNode: CSTNode): ASTNode | null {
       if (child.label === "=") continue;
   
       if (!idAST) {
-        // the first non-"=" token is taken as the identifier
+        // the first non-"=" token is the identifier
         idAST = new ASTNode(child.label);
       } else if (!exprAST) {
-
         let tempAST = buildASTFromCST(child);
-        if (tempAST && tempAST.label === "Expr" && tempAST.children.length === 1) {
-          exprAST = tempAST.children[0]; 
-        } else {
-          exprAST = tempAST;
+        // flatten out any extra layer if it's an expression wrapper
+        while (
+          tempAST &&
+          (tempAST.label === "Expr" || tempAST.label === "IntExpr" || tempAST.label === "StringExpr") &&
+          tempAST.children.length === 1
+        ) {
+          tempAST = tempAST.children[0];
         }
+        exprAST = tempAST;
       }
     }
     if (idAST) astNode.addChild(idAST);
     if (exprAST) astNode.addChild(exprAST);
     return astNode;
   }
+  
+  
   
 
 
