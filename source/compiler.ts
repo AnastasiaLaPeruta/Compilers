@@ -641,8 +641,9 @@ class ASTNode {
     let result = "";
     // if a node has no children, assume it’s a token and print with square brackets
     if (this.children.length === 0) {
-      result += `${indent}[ ${this.label}\n`;
-    } else {
+      result += `${indent}[ ${this.label} ]\n`;
+    }
+    else {
       result += `${indent}< ${this.label} >\n`;
       for (const child of this.children) {
         result += child.print(depth + 1);
@@ -680,10 +681,18 @@ function gatherString(cstNode: CSTNode): string {
 
 // ----------------------- CST to AST Conversion ----------------------- //
 function buildASTFromCST(cstNode: CSTNode): ASTNode | null {
-  // suggested by ChatGPT
   if (!cstNode || cstNode.label === "ε" || cstNode.label === "Îµ") {
     return null;
   }
+
+  // Special handling for the Program node: ignore the EOP token ("$")
+  if (cstNode.label === "Program") {
+    const meaningfulChildren = cstNode.children.filter(child => child.label !== "$");
+    if (meaningfulChildren.length === 1) {
+      return buildASTFromCST(meaningfulChildren[0]);
+    }
+  }
+  
 
   if (cstNode.label === "StringExpr") {
     // collect all characters from the CST subtree
@@ -774,14 +783,22 @@ function buildASTFromCST(cstNode: CSTNode): ASTNode | null {
       if (child.label === "print" || child.label === "(" || child.label === ")") {
         continue;
       }
-      const childAST = buildASTFromCST(child);
+      let childAST = buildASTFromCST(child);
+
+      while (
+        childAST &&
+        (childAST.label === "Expr" || childAST.label === "IntExpr" || childAST.label === "StringExpr") &&
+        childAST.children.length === 1
+      ) {
+        childAST = childAST.children[0];
+      }
       if (childAST) {
         astNode.addChild(childAST);
       }
     }
     return astNode;
   }
-
+  
   // mapping for other nodes
   const labelMap: { [key: string]: string } = {
     "Program": "BLOCK",
