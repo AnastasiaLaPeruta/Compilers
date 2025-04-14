@@ -198,8 +198,15 @@ function lexProgram(progText, lineOffset = 0) {
                 output += `DEBUG Lexer - DIGIT [ ${char} ] found on line ${globalLine}\n`;
             }
             // --- Identifiers (a single character) ---
+            // In the lexProgram function, where ID tokens are created:
             else if (char >= "a" && char <= "z") {
-                tokens.push({ type: "ID", lexeme: char, line: globalLine, column: charIndex + 1 });
+                tokens.push({
+                    type: "ID",
+                    lexeme: char,
+                    line: globalLine,
+                    column: charIndex + 1
+                });
+                console.log(`Added ID token: ${char} at line ${globalLine}`);
                 output += `DEBUG Lexer - ID [ ${char} ] found on line ${globalLine}\n`;
             }
             // --- Ignore whitespace ---
@@ -242,11 +249,9 @@ function processPrograms() {
         const raw = rawPrograms[i];
         if (raw.trim().length > 0) {
             if (i < rawPrograms.length - 1) {
-                // for every part except the last, append "$" back
                 programs.push({ program: raw + "$", offset: cumulativeLineCount });
             }
             else {
-                // last program: leave it as is
                 programs.push({ program: raw, offset: cumulativeLineCount });
             }
         }
@@ -270,14 +275,15 @@ function processPrograms() {
                 compileOutput += `\nCST for program ${programNumber}:\n` + result.tree.print();
                 // --- AST Generation --- //
                 if (result.tree) {
-                    const astRoot = buildASTFromCST(result.tree.root); // generate the AST from the CST
+                    const astRoot = buildASTFromCST(result.tree.root);
                     if (astRoot) {
                         compileOutput += `\nAST for program ${programNumber}:\n` + astRoot.print();
+                        // --- Semantic Analysis --- //
                         // --- Semantic Analysis --- //
                         const semanticAnalyzer = new SemanticAnalyzer();
                         semanticAnalyzer.analyze(astRoot);
                         const errorCount = semanticAnalyzer.errors.length;
-                        const warningCount = semanticAnalyzer.warnings.length; // will be 0 if no warnings are added
+                        const warningCount = semanticAnalyzer.warnings.length;
                         compileOutput += `\nProgram ${programNumber} Semantic Analysis\n`;
                         compileOutput += `Program ${programNumber} Semantic Analysis produced\n`;
                         compileOutput += `${errorCount} error(s) and ${warningCount} warning(s)\n`;
@@ -285,17 +291,16 @@ function processPrograms() {
                             compileOutput += "\n" + semanticAnalyzer.symbolTable.display(programNumber);
                         }
                         else {
-                            compileOutput += 'Program ${programNumber} Symbol Table not produced due to error(s) detected by semantic analysis\n';
+                            compileOutput += `\nProgram ${programNumber} Symbol Table not produced due to error(s) detected by semantic analysis\n`;
                         }
                     }
-                }
-                else {
-                    compileOutput += `\nAST for program ${programNumber}: AST generation returned no nodes.\n`;
+                    else {
+                        compileOutput += `\nAST for program ${programNumber}: AST generation returned no nodes.\n`;
+                    }
                 }
             }
         }
         else {
-            // if there are lexer errors, skip parsing
             compileOutput += `PARSER: Skipped due to LEXER error(s)\n`;
             compileOutput += `CST for program ${programNumber}: Skipped due to LEXER error(s).\n`;
         }
@@ -417,9 +422,30 @@ class Parser {
     parseVarDecl() {
         this.output += "PARSER: parseVarDecl()\n";
         this.cst.addNode("branch", "VarDecl");
-        this.match("ITYPE");
-        this.match("ID");
+        const typeToken = this.matchReturnToken("ITYPE");
+        const idToken = this.matchReturnToken("ID");
         this.cst.moveUp();
+    }
+    matchReturnToken(expected) {
+        const token = this.tokens[this.current];
+        if (token && token.type === expected) {
+            // create a new CST node and store the entire token in it
+            const newNode = new CSTNode(token.lexeme);
+            newNode.token = token; // storing token data (line, column, etc.)
+            if (this.cst.current) {
+                newNode.parent = this.cst.current;
+                this.cst.current.children.push(newNode);
+            }
+            else {
+                this.cst.root = newNode;
+                this.cst.current = newNode;
+            }
+            this.current++;
+            return token;
+        }
+        else {
+            throw new Error(`PARSER ERROR: Expected ${expected} but got ${token ? token.lexeme : "EOF"} at line ${token === null || token === void 0 ? void 0 : token.line}`);
+        }
     }
     // WhileStatement ::= while BooleanExpr Block
     parseWhileStatement() {
@@ -610,9 +636,11 @@ class CST {
 }
 // ----------------------- AST Classes ----------------------- //
 class ASTNode {
-    constructor(label) {
+    constructor(label, line = 0, column = 0) {
         this.label = label;
         this.children = [];
+        this.line = line;
+        this.column = column;
     }
     addChild(child) {
         this.children.push(child);
@@ -644,17 +672,22 @@ class ASTNode {
 }
 class SymbolTable {
     constructor() {
-        this.table = [new Map()];
-        this.currentScope = 0;
+        this.table = [new Map()]; // initialize with global scope
+        this.currentScope = 0; // start at global scope
         this.errors = [];
+        this.allSymbols = [];
     }
     enterScope() {
-        this.table.push(new Map());
         this.currentScope++;
+        this.table.push(new Map()); // Add a new scope
+        console.log(`DEBUG: Entered scope ${this.currentScope}`);
     }
     exitScope() {
-        this.table.pop();
-        this.currentScope--;
+        if (this.currentScope > 0) {
+            this.table.pop(); // Remove the current scope
+            console.log(`DEBUG: Exited scope ${this.currentScope}`);
+            this.currentScope--;
+        }
     }
     addSymbol(name, type, line, column) {
         const current = this.table[this.table.length - 1];
@@ -662,7 +695,9 @@ class SymbolTable {
             this.errors.push(`Redeclaration error: '${name}' already declared in scope ${this.currentScope} at line ${line}, column ${column}.`);
         }
         else {
-            current.set(name, { name, type, scope: this.currentScope, line, column });
+            const entry = { name, type, scope: this.currentScope, line, column };
+            current.set(name, entry);
+            this.allSymbols.push(entry); // Ensure all symbols are recorded
         }
     }
     lookup(name) {
@@ -675,15 +710,16 @@ class SymbolTable {
     }
     display(programNumber) {
         let output = `Program ${programNumber} Symbol Table\n`;
-        output += "--------------------------------------\n";
-        output += "Name  Type    Scope Line\n";
-        output += "--------------------------------------\n";
-        // loop over each scope in the order they were created
-        for (let i = 0; i < this.table.length; i++) {
-            for (const symbolEntry of this.table[i].values()) {
-                // each row: name, type, scope, line
-                output += `${symbolEntry.name}  ${symbolEntry.type}  ${symbolEntry.scope}  ${symbolEntry.line}\n`;
-            }
+        output += "---\n";
+        output += "Name Type    Scope Line\n";
+        output += "---\n";
+        // Sort symbols by their line numbers to match expected order
+        const sortedSymbols = [...this.allSymbols].sort((a, b) => a.line - b.line);
+        for (const symbol of sortedSymbols) {
+            // Pad the type with spaces to align columns
+            const paddedType = symbol.type.padEnd(7);
+            output += `${symbol.name}    ${paddedType}${symbol.scope}    ${symbol.line}\n`;
+            console.log(`DEBUG: Symbol '${symbol.name}' of type '${symbol.type}' in scope ${symbol.scope} at line ${symbol.line}`);
         }
         return output;
     }
@@ -696,21 +732,25 @@ class SemanticAnalyzer {
     }
     // entry point: pass the AST root node
     analyze(node) {
-        this.traverse(node);
-        // includes any errors that arose during symbol table operations
-        this.errors.push(...this.symbolTable.errors);
+        this.traverse(node, true); // Start traversal with global scope
+        this.errors.push(...this.symbolTable.errors); // Include symbol table errors
     }
     // recursively traverse the AST to perform checking.
-    traverse(node) {
+    traverse(node, isGlobal = false) {
         if (!node)
             return;
+        console.log(`DEBUG: Visiting node '${node.label}', isGlobal: ${isGlobal}, currentScope: ${this.symbolTable.currentScope}`);
         switch (node.label) {
             case "BLOCK":
-                this.symbolTable.enterScope();
-                for (const child of node.children) {
-                    this.traverse(child);
+                if (!isGlobal) {
+                    this.symbolTable.enterScope(); // Enter a new scope for nested blocks
                 }
-                this.symbolTable.exitScope();
+                for (const child of node.children) {
+                    this.traverse(child, false); // Pass false for nested blocks
+                }
+                if (!isGlobal) {
+                    this.symbolTable.exitScope(); // Exit the scope for nested blocks
+                }
                 break;
             case "Variable Declaration":
                 this.handleVarDecl(node);
@@ -719,33 +759,28 @@ class SemanticAnalyzer {
                 this.handleAssignment(node);
                 break;
             case "Print Statement":
-                // for print statements, simply evaluate the expression
                 if (node.children.length > 0) {
                     this.evaluateExpression(node.children[0]);
                 }
                 break;
-            case "While Statement":
-                this.handleWhile(node);
-                break;
-            case "If Statement":
-                this.handleIf(node);
-                break;
             default:
-                // for all other nodes, recursively traverse their children
                 for (const child of node.children) {
-                    this.traverse(child);
+                    this.traverse(child, false); // Pass false for other nodes
                 }
                 break;
         }
     }
     handleVarDecl(node) {
-        // expect node.children[0] to be the type and node.children[1] to be the identifier
         if (node.children.length >= 2) {
             const typeNode = node.children[0];
             const idNode = node.children[1];
-            const type = typeNode.label;
+            const type = typeNode.label === "boolean" ? "bool" : typeNode.label;
             const name = idNode.label;
-            this.symbolTable.addSymbol(name, type, 0, 0);
+            // Line/column from the ID node
+            const line = idNode.line;
+            const column = idNode.column;
+            this.symbolTable.addSymbol(name, type, line, column);
+            console.log(`DEBUG: Added variable '${name}' of type '${type}' at line ${line}, scope ${this.symbolTable.currentScope}`);
         }
     }
     handleAssignment(node) {
@@ -849,6 +884,10 @@ function buildASTFromCST(cstNode) {
     if (!cstNode || cstNode.label === "ε" || cstNode.label === "Îµ") {
         return null;
     }
+    // if this is a leaf node with token info, use that:
+    if (cstNode.token) {
+        return new ASTNode(cstNode.token.lexeme, cstNode.token.line, cstNode.token.column);
+    }
     // special handling for the Program node: ignore the EOP token ("$")
     if (cstNode.label === "Program") {
         // filter out any EOP token
@@ -889,11 +928,21 @@ function buildASTFromCST(cstNode) {
         for (const child of cstNode.children) {
             // looks for type tokens
             if (!typeAST && (child.label === "int" || child.label === "string" || child.label === "boolean")) {
-                typeAST = new ASTNode(child.label);
+                if (child.token) {
+                    typeAST = new ASTNode(child.label, child.token.line, child.token.column);
+                }
+                else {
+                    typeAST = new ASTNode(child.label);
+                }
             }
-            // looks for the identifier token
+            // looks for the identifier token 
             if (!idAST && child.label !== "int" && child.label !== "string" && child.label !== "boolean") {
-                idAST = new ASTNode(child.label);
+                if (child.token) {
+                    idAST = new ASTNode(child.label, child.token.line, child.token.column);
+                }
+                else {
+                    idAST = new ASTNode(child.label);
+                }
             }
         }
         if (typeAST)
