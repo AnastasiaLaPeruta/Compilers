@@ -834,6 +834,10 @@ class SemanticAnalyzer {
             if (/^[0-9]+$/.test(node.label)) {
                 return "int";
             }
+            // if the label is "true" or "false", treat as boolean
+            if (node.label === "true" || node.label === "false") {
+                return "bool";
+            }
             // if the label is a single-character identifier
             if (/^[a-z]$/.test(node.label)) {
                 const entry = this.symbolTable.lookup(node.label);
@@ -846,9 +850,9 @@ class SemanticAnalyzer {
         if (node.label === "IntExpr") {
             return "int";
         }
-        // if node represents a BooleanExpr
+        // if node represents a BooleanExpr, return "bool"
         if (node.label === "BooleanExpr") {
-            return "boolean";
+            return "bool";
         }
         // for a generic expression node, evaluate its children
         for (const child of node.children) {
@@ -903,8 +907,7 @@ function buildASTFromCST(cstNode) {
         // return a single leaf node with that entire string
         return new ASTNode(fullString);
     }
-    // nodes that have no semantic meaning.
-    const skipLabels = new Set(["Statement", "Statement List", "{", "}", "(", ")", "$"]);
+    const skipLabels = new Set(["Statement List", "{", "}", "(", ")", "$"]);
     if (skipLabels.has(cstNode.label)) {
         let aggregated = null;
         for (const child of cstNode.children) {

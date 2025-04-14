@@ -917,39 +917,44 @@ handleVarDecl(node: ASTNode): void {
 
   // evaluate expressions to infer their types
   evaluateExpression(node: ASTNode): string | null {
-      if (!node) return null;
-      // if node is a leaf (literal or identifier)
-      if (node.children.length === 0) {
-          // if the label is a digit literal
-          if (/^[0-9]+$/.test(node.label)) {
-              return "int";
-          }
-          // if the label is a single-character identifier
-          if (/^[a-z]$/.test(node.label)) {
-              const entry = this.symbolTable.lookup(node.label);
-              return entry ? entry.type : null;
-          }
-          // otherwise, treat it as a string literal
-          return "string";
-      }
+    if (!node) return null;
+    // if node is a leaf (literal or identifier)
+    if (node.children.length === 0) {
+        // if the label is a digit literal
+        if (/^[0-9]+$/.test(node.label)) {
+            return "int";
+        }
+        // if the label is "true" or "false", treat as boolean
+        if (node.label === "true" || node.label === "false") {
+            return "bool";
+        }
+        // if the label is a single-character identifier
+        if (/^[a-z]$/.test(node.label)) {
+            const entry = this.symbolTable.lookup(node.label);
+            return entry ? entry.type : null;
+        }
+        // otherwise, treat it as a string literal
+        return "string";
+    }
 
-      // if node represents an IntExpr
-      if (node.label === "IntExpr") {
-          return "int";
-      }
+    // if node represents an IntExpr
+    if (node.label === "IntExpr") {
+        return "int";
+    }
 
-      // if node represents a BooleanExpr
-      if (node.label === "BooleanExpr") {
-          return "boolean";
-      }
+    // if node represents a BooleanExpr, return "bool"
+    if (node.label === "BooleanExpr") {
+        return "bool";
+    }
 
-      // for a generic expression node, evaluate its children
-      for (const child of node.children) {
-          const type = this.evaluateExpression(child);
-          if (type) return type;
-      }
-      return null;
-  }
+    // for a generic expression node, evaluate its children
+    for (const child of node.children) {
+        const type = this.evaluateExpression(child);
+        if (type) return type;
+    }
+    return null;
+}
+
 }
 
 
@@ -1013,22 +1018,22 @@ function buildASTFromCST(cstNode: CSTNode): ASTNode | null {
   }
   
 
-  // nodes that have no semantic meaning.
-  const skipLabels = new Set(["Statement", "Statement List", "{", "}", "(", ")", "$"]);
-  if (skipLabels.has(cstNode.label)) {
-    let aggregated: ASTNode | null = null;
-    for (const child of cstNode.children) {
-      const childAST = buildASTFromCST(child);
-      if (childAST) {
-        if (!aggregated) {
-          aggregated = childAST;
-        } else {
-          aggregated.addChild(childAST);
-        }
+const skipLabels = new Set(["Statement List", "{", "}", "(", ")", "$"]);
+if (skipLabels.has(cstNode.label)) {
+  let aggregated: ASTNode | null = null;
+  for (const child of cstNode.children) {
+    const childAST = buildASTFromCST(child);
+    if (childAST) {
+      if (!aggregated) {
+        aggregated = childAST;
+      } else {
+        aggregated.addChild(childAST);
       }
     }
-    return aggregated;
   }
+  return aggregated;
+}
+
 
   // special transformation for Variable Declarations
   if (cstNode.label === "VarDecl") {
