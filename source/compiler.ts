@@ -577,7 +577,7 @@ class Parser {
       if (token && (token.type === "BOOL_EQUAL" || token.type === "BOOL_INEQUAL")) {
         this.match(token.type);
       } else {
-        throw new Error(`PARSER ERROR: Expected boolean operator but got ${token ? token.lexeme : "EOF"} at line ${token?.line}`);
+        throw new Error(`PARSER ERROR: Expected boolean operator  at line ${token?.line}`);
       }
       this.cst.moveUp();
     }

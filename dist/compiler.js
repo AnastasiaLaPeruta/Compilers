@@ -549,7 +549,7 @@ class Parser {
             this.match(token.type);
         }
         else {
-            throw new Error(`PARSER ERROR: Expected boolean operator but got ${token ? token.lexeme : "EOF"} at line ${token === null || token === void 0 ? void 0 : token.line}`);
+            throw new Error(`PARSER ERROR: Expected boolean operator  at line ${token === null || token === void 0 ? void 0 : token.line}`);
         }
         this.cst.moveUp();
     }
