@@ -822,7 +822,7 @@ class SemanticAnalyzer {
                 entry.used = true;
                 const exprType = this.evaluateExpression(exprNode);
                 if (exprType && exprType !== entry.type) {
-                    this.errors.push(`Semantic Error: Type mismatch in assignment to '${idNode.label}' at line ${idNode.line}, column ${idNode.column}. Expected ${entry.type}, found ${exprType}.`);
+                    this.errors.push(`Semantic Error: Type mismatch in assignment to '${idNode.label}', found ${exprType}.`);
                 }
             }
         }
@@ -881,11 +881,13 @@ class SemanticAnalyzer {
             return "int";
         if (node.label === "BooleanExpr")
             return "bool";
+        // tries to infer from children
         for (const child of node.children) {
             const type = this.evaluateExpression(child);
             if (type)
                 return type;
         }
+        // if nothing matched, return null and preserve line info
         return null;
     }
 }
@@ -1052,7 +1054,17 @@ function buildASTFromCST(cstNode) {
         "IfStatement": "If Statement",
     };
     const newLabel = labelMap[cstNode.label] || cstNode.label;
-    const astNode = new ASTNode(newLabel);
+    let line = 0;
+    let column = 0;
+    // Try to get line/column info from first token-bearing child
+    for (const child of cstNode.children) {
+        if (child.token) {
+            line = child.token.line;
+            column = child.token.column;
+            break;
+        }
+    }
+    const astNode = new ASTNode(newLabel, line, column);
     // recursively add transformed children
     for (const child of cstNode.children) {
         const childAST = buildASTFromCST(child);
