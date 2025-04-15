@@ -610,8 +610,8 @@ class CST {
     print(node = this.root, depth = 0) {
         if (!node)
             return "";
-        // skip nodes that represent an epsilon production, inlcuding Îµ was ChatGPT's suggestion
-        if (node.label === "ε" || node.label === "Îµ") {
+        // allow ε to be visible, ChatGPT's suggestion
+        if (node.label === "Îµ") {
             return "";
         }
         const indent = "-".repeat(depth);
