@@ -767,7 +767,16 @@ exitScope(): void {
             `Redeclaration error: '${name}' already declared in scope ${this.currentScope} at line ${line}, column ${column}.`
         );
     } else {
-        const entry: SymbolEntry = { name, type, scope: this.currentScope, line, column };
+      const entry: SymbolEntry = {
+        name,
+        type,
+        scope: this.currentScope,
+        line,
+        column,
+        used: false,
+        initialized: false
+      };
+      
         current.set(name, entry);
         this.allSymbols.push(entry); // Ensure all symbols are recorded
     }
@@ -833,6 +842,16 @@ class SemanticAnalyzer {
         );
       }
     }
+
+    for (const entry of this.symbolTable.allSymbols) {
+      if (!entry.used) {
+        this.warnings.push(`Warning: Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never used.`);
+      }
+      if (!entry.initialized) {
+        this.warnings.push(`Warning: Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never assigned a value.`);
+      }
+    }
+    
   }
 
 
@@ -899,13 +918,16 @@ handleVarDecl(node: ASTNode): void {
           const exprNode = node.children[1];
           const entry = this.symbolTable.lookup(idNode.label);
           if (!entry) {
-              this.errors.push(`Semantic Error: Variable '${idNode.label}' used before declaration.`);
+            this.errors.push(`Semantic Error: Variable '${idNode.label}' used before declaration at line ${idNode.line}, column ${idNode.column}.`);
           } else {
-              entry.initialized = true; // mark as initialized
+            entry.initialized = true;
+            entry.used = true;
+        
               const exprType = this.evaluateExpression(exprNode);
   
               if (exprType && exprType !== entry.type) {
-                  this.errors.push(`Semantic Error: Type mismatch in assignment to '${idNode.label}'. Expected ${entry.type}, found ${exprType}.`);
+                this.errors.push(`Semantic Error: Type mismatch in assignment to '${idNode.label}' at line ${idNode.line}, column ${idNode.column}. Expected ${entry.type}, found ${exprType}.`);
+
               }
           }
       }
@@ -918,7 +940,8 @@ handleVarDecl(node: ASTNode): void {
           const block = node.children[1];
           const condType = this.evaluateExpression(condition);
           if (condType !== "boolean") {
-              this.errors.push(`Semantic Error: While condition must be boolean, found ${condType}.`);
+            this.errors.push(`Semantic Error: While condition must be boolean, found ${condType} at line ${node.line}, column ${node.column}.`);
+
           }
           this.traverse(block);
       }
