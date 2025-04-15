@@ -752,15 +752,6 @@ class SemanticAnalyzer {
         this.traverse(node, true);
         // includes any errors collected during symbol table operations
         this.errors.push(...this.symbolTable.errors);
-        // checks for variables that were declared but never used or uninitialized
-        for (const symbol of this.symbolTable.allSymbols) {
-            if (!symbol.used) {
-                this.warnings.push(`Warning: Variable '${symbol.name}' declared at line ${symbol.line} is never used.`);
-            }
-            if (!symbol.initialized) {
-                this.warnings.push(`Warning: Variable '${symbol.name}' declared at line ${symbol.line} may be uninitialized.`);
-            }
-        }
         for (const entry of this.symbolTable.allSymbols) {
             if (!entry.used) {
                 this.warnings.push(`Warning: Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never used.`);
