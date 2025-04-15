@@ -815,8 +815,24 @@ class SemanticAnalyzer {
 
   // entry point: pass the AST root node
   analyze(node: ASTNode): void {
-    this.traverse(node, true); // Start traversal with global scope
-    this.errors.push(...this.symbolTable.errors); // Include symbol table errors
+    // starts traversal with global scope
+    this.traverse(node, true);
+    // includes any errors collected during symbol table operations
+    this.errors.push(...this.symbolTable.errors);
+
+    // checks for variables that were declared but never used or uninitialized
+    for (const symbol of this.symbolTable.allSymbols) {
+      if (!symbol.used) {
+        this.warnings.push(
+          `Warning: Variable '${symbol.name}' declared at line ${symbol.line} is never used.`
+        );
+      }
+      if (!symbol.initialized) {
+        this.warnings.push(
+          `Warning: Variable '${symbol.name}' declared at line ${symbol.line} may be uninitialized.`
+        );
+      }
+    }
   }
 
 
