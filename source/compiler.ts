@@ -296,7 +296,7 @@ function processPrograms() {
                       const errorCount = semanticAnalyzer.errors.length;
                       const warningCount = semanticAnalyzer.warnings.length;
 
-                      compileOutput += `Program ${programNumber} Semantic Analysis produced\n`;
+                      compileOutput += `\nProgram ${programNumber} Semantic Analysis produced\n`;
                       compileOutput += `${errorCount} error(s) and ${warningCount} warning(s)\n`;
                       
                       // Print each error and warning in detail
