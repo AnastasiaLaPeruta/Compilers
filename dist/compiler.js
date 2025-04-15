@@ -284,7 +284,6 @@ function processPrograms() {
                         semanticAnalyzer.analyze(astRoot);
                         const errorCount = semanticAnalyzer.errors.length;
                         const warningCount = semanticAnalyzer.warnings.length;
-                        compileOutput += `\nProgram ${programNumber} Semantic Analysis\n`;
                         compileOutput += `Program ${programNumber} Semantic Analysis produced\n`;
                         compileOutput += `${errorCount} error(s) and ${warningCount} warning(s)\n`;
                         // Print each error and warning in detail
