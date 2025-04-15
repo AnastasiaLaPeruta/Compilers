@@ -793,6 +793,7 @@ class SemanticAnalyzer {
                 this.errors.push(`Semantic Error: Variable '${idNode.label}' used before declaration.`);
             }
             else {
+                entry.initialized = true; // mark as initialized
                 const exprType = this.evaluateExpression(exprNode);
                 if (exprType && exprType !== entry.type) {
                     this.errors.push(`Semantic Error: Type mismatch in assignment to '${idNode.label}'. Expected ${entry.type}, found ${exprType}.`);
@@ -841,7 +842,11 @@ class SemanticAnalyzer {
             // if the label is a single-character identifier
             if (/^[a-z]$/.test(node.label)) {
                 const entry = this.symbolTable.lookup(node.label);
-                return entry ? entry.type : null;
+                if (entry) {
+                    entry.used = true; // tracks usage
+                    return entry.type;
+                }
+                return null;
             }
             // otherwise, treat it as a string literal
             return "string";
