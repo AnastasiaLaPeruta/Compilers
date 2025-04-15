@@ -287,6 +287,13 @@ function processPrograms() {
                         compileOutput += `\nProgram ${programNumber} Semantic Analysis\n`;
                         compileOutput += `Program ${programNumber} Semantic Analysis produced\n`;
                         compileOutput += `${errorCount} error(s) and ${warningCount} warning(s)\n`;
+                        // Print each error and warning in detail
+                        for (const err of semanticAnalyzer.errors) {
+                            compileOutput += `ERROR: ${err}\n`;
+                        }
+                        for (const warn of semanticAnalyzer.warnings) {
+                            compileOutput += `WARNING: ${warn}\n`;
+                        }
                         if (errorCount === 0) {
                             compileOutput += "\n" + semanticAnalyzer.symbolTable.display(programNumber);
                         }
@@ -737,6 +744,7 @@ class SemanticAnalyzer {
         this.symbolTable = new SymbolTable();
         this.errors = [];
         this.warnings = [];
+        this.alreadyReported = new Set();
     }
     // entry point: pass the AST root node
     analyze(node) {
@@ -817,7 +825,7 @@ class SemanticAnalyzer {
             const exprNode = node.children[1];
             const entry = this.symbolTable.lookup(idNode.label);
             if (!entry) {
-                this.errors.push(`Semantic Error: Variable '${idNode.label}' used before declaration at line ${idNode.line}, column ${idNode.column}.`);
+                //
             }
             else {
                 entry.initialized = true;
@@ -857,37 +865,32 @@ class SemanticAnalyzer {
     evaluateExpression(node) {
         if (!node)
             return null;
-        // if node is a leaf (literal or identifier)
         if (node.children.length === 0) {
-            // if the label is a digit literal
-            if (/^[0-9]+$/.test(node.label)) {
+            if (/^[0-9]+$/.test(node.label))
                 return "int";
-            }
-            // if the label is "true" or "false", treat as boolean
-            if (node.label === "true" || node.label === "false") {
+            if (node.label === "true" || node.label === "false")
                 return "bool";
-            }
-            // if the label is a single-character identifier
             if (/^[a-z]$/.test(node.label)) {
                 const entry = this.symbolTable.lookup(node.label);
                 if (entry) {
-                    entry.used = true; // tracks usage
+                    entry.used = true;
                     return entry.type;
                 }
-                return null;
+                else {
+                    const key = `${node.label}@${node.line}`;
+                    if (!this.alreadyReported.has(key)) {
+                        this.errors.push(`Semantic Error: Variable '${node.label}' used before declaration.`);
+                        this.alreadyReported.add(key);
+                    }
+                    return null;
+                }
             }
-            // otherwise, treat it as a string literal
             return "string";
         }
-        // if node represents an IntExpr
-        if (node.label === "IntExpr") {
+        if (node.label === "IntExpr")
             return "int";
-        }
-        // if node represents a BooleanExpr, return "bool"
-        if (node.label === "BooleanExpr") {
+        if (node.label === "BooleanExpr")
             return "bool";
-        }
-        // for a generic expression node, evaluate its children
         for (const child of node.children) {
             const type = this.evaluateExpression(child);
             if (type)
@@ -997,8 +1000,12 @@ function buildASTFromCST(cstNode) {
             if (child.label === "=")
                 continue;
             if (!idAST) {
-                // the first non-"=" token is the identifier
-                idAST = new ASTNode(child.label);
+                if (child.token) {
+                    idAST = new ASTNode(child.label, child.token.line, child.token.column);
+                }
+                else {
+                    idAST = new ASTNode(child.label);
+                }
             }
             else if (!exprAST) {
                 let tempAST = buildASTFromCST(child);

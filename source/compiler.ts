@@ -299,6 +299,16 @@ function processPrograms() {
                       compileOutput += `\nProgram ${programNumber} Semantic Analysis\n`;
                       compileOutput += `Program ${programNumber} Semantic Analysis produced\n`;
                       compileOutput += `${errorCount} error(s) and ${warningCount} warning(s)\n`;
+                      
+                      // Print each error and warning in detail
+                      for (const err of semanticAnalyzer.errors) {
+                        compileOutput += `ERROR: ${err}\n`;
+                      }
+                      for (const warn of semanticAnalyzer.warnings) {
+                        compileOutput += `WARNING: ${warn}\n`;
+                      }
+
+
                       if (errorCount === 0) {
                         compileOutput += "\n" + semanticAnalyzer.symbolTable.display(programNumber);
                       } else {
@@ -815,11 +825,13 @@ class SemanticAnalyzer {
   symbolTable: SymbolTable;
   errors: string[];
   warnings: string[];
+  alreadyReported: Set<string>; 
 
   constructor() {
       this.symbolTable = new SymbolTable();
       this.errors = [];
       this.warnings = [];
+      this.alreadyReported = new Set(); 
   }
 
   // entry point: pass the AST root node
@@ -918,7 +930,8 @@ handleVarDecl(node: ASTNode): void {
           const exprNode = node.children[1];
           const entry = this.symbolTable.lookup(idNode.label);
           if (!entry) {
-            this.errors.push(`Semantic Error: Variable '${idNode.label}' used before declaration at line ${idNode.line}, column ${idNode.column}.`);
+            //
+            
           } else {
             entry.initialized = true;
             entry.used = true;
@@ -963,48 +976,38 @@ handleVarDecl(node: ASTNode): void {
   // evaluate expressions to infer their types
   evaluateExpression(node: ASTNode): string | null {
     if (!node) return null;
-    // if node is a leaf (literal or identifier)
+
     if (node.children.length === 0) {
-        // if the label is a digit literal
-        if (/^[0-9]+$/.test(node.label)) {
-            return "int";
-        }
-        // if the label is "true" or "false", treat as boolean
-        if (node.label === "true" || node.label === "false") {
-            return "bool";
-        }
-        // if the label is a single-character identifier
+        if (/^[0-9]+$/.test(node.label)) return "int";
+        if (node.label === "true" || node.label === "false") return "bool";
         if (/^[a-z]$/.test(node.label)) {
           const entry = this.symbolTable.lookup(node.label);
           if (entry) {
-              entry.used = true; // tracks usage
-              return entry.type;
+            entry.used = true;
+            return entry.type;
+          } else {
+            const key = `${node.label}@${node.line}`;
+            if (!this.alreadyReported.has(key)) {
+              this.errors.push(
+                `Semantic Error: Variable '${node.label}' used before declaration.`
+              );
+              this.alreadyReported.add(key);
+            }
+            return null;
           }
-          return null;
         }
-      
-        // otherwise, treat it as a string literal
         return "string";
     }
 
-    // if node represents an IntExpr
-    if (node.label === "IntExpr") {
-        return "int";
-    }
+    if (node.label === "IntExpr") return "int";
+    if (node.label === "BooleanExpr") return "bool";
 
-    // if node represents a BooleanExpr, return "bool"
-    if (node.label === "BooleanExpr") {
-        return "bool";
-    }
-
-    // for a generic expression node, evaluate its children
     for (const child of node.children) {
         const type = this.evaluateExpression(child);
         if (type) return type;
     }
     return null;
-}
-
+  }
 }
 
 
@@ -1125,9 +1128,13 @@ if (skipLabels.has(cstNode.label)) {
       if (child.label === "=") continue;
   
       if (!idAST) {
-        // the first non-"=" token is the identifier
-        idAST = new ASTNode(child.label);
-      } else if (!exprAST) {
+        if (child.token) {
+          idAST = new ASTNode(child.label, child.token.line, child.token.column);
+        } else {
+          idAST = new ASTNode(child.label);
+        }
+      }
+       else if (!exprAST) {
         let tempAST = buildASTFromCST(child);
         // flatten out any extra layer if it's an expression wrapper
         while (
