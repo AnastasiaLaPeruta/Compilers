@@ -921,6 +921,15 @@ handleVarDecl(node: ASTNode): void {
           } else {
             entry.initialized = true;
             entry.used = true;
+
+            const entry = this.symbolTable.lookup(idNode.label);
+            if (!entry) {
+              this.errors.push(
+              `Semantic Error: Variable '${idNode.label}' used before declaration at line ${idNode.line}, column ${idNode.column}.`
+              );
+              return;
+            
+              entry.initialized = true;
         
               const exprType = this.evaluateExpression(exprNode);
   
@@ -928,9 +937,9 @@ handleVarDecl(node: ASTNode): void {
                 this.errors.push(`Semantic Error: Type mismatch in assignment to '${idNode.label}', found ${exprType}.`);
 
               }
-          }
-      }
-  }
+            }
+        }
+    }
 
   handleWhile(node: ASTNode): void {
       // while: first child is the boolean condition, second child is the block
