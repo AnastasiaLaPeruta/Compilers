@@ -307,6 +307,11 @@ function processPrograms() {
                         compileOutput += `WARNING: ${warn}\n`;
                       }
 
+                      // ── generate 6502a code ──
+                      const cg  = new CodeGenerator();
+                      const asm = cg.generate(astRoot);
+                      compileOutput += "\nGenerated 6502a Assembly:\n" + asm + "\n";
+
 
                       if (errorCount === 0) {
                         compileOutput += "\n" + semanticAnalyzer.symbolTable.display(programNumber);
