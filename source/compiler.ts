@@ -1283,7 +1283,9 @@ const astNode = new ASTNode(newLabel, line, column);
 class CodeGenerator {
   private code: number[] = [];
   private varAddrs = new Map<string,string>();
-  private strLits  = new Map<string,string>();
+  // holds the byte‐address where each literal will live
+  private strAddrs = new Map<string,number>();
+
   private nextDataAddr = 0x0010;
   private tempAddr    = 0x00F0;
   private labelCount  = 0;
@@ -1307,8 +1309,7 @@ class CodeGenerator {
     this.emitByte(0x00);
     // --- reserve vars (one byte each) ---
     for (const _ of this.varAddrs) this.emitByte(0x00);
-    // --- string literals (ascii …,0) ---
-    for (const [str] of this.strLits) {
+    for (const [str] of this.strAddrs) {
       for (const c of str) this.emitByte(c.charCodeAt(0));
       this.emitByte(0x00);
     }
@@ -1323,7 +1324,11 @@ class CodeGenerator {
         node.children.forEach(c => this.walk(c));
         break;
       case 'Variable Declaration':
-        this.allocVar(node.children[1].label);
+        // only allocate space for non‐string vars
+        if (node.children[0].label !== 'string') {
+          this.allocVar(node.children[1].label);
+        }
+  
         break;
       case 'Assignment Statement':
         this.emitAssign(node);
@@ -1350,56 +1355,83 @@ class CodeGenerator {
     return this.varAddrs.get(name)!;
   }
 
-  private allocString(str: string) {
-    if (!this.strLits.has(str)) {
-      const lbl = `STR${this.labelCount++}`;
-      this.strLits.set(str, lbl);
+  private allocString(str: string): number {
+    if (!this.strAddrs.has(str)) {
+      // record the next free byte as the start of this literal
+      this.strAddrs.set(str, this.nextDataAddr);
+      // reserve room for its characters + the trailing 0
       this.nextDataAddr += str.length + 1;
     }
-    return this.strLits.get(str)!;
+    return this.strAddrs.get(str)!;
   }
-
-
-  private emitAssign(n: ASTNode) {
-    const id   = n.children[0].label;
-    const varAddr = parseInt(this.allocVar(id).slice(1), 16);
-    const rhs = n.children[1].label;
   
-    // ---- strings ----
+  private strVarAddrs = new Map<string,number>();
+
+  
+ 
+  private emitAssign(n: ASTNode) {
+    const id      = n.children[0].label;
+    const varAddr = parseInt(this.allocVar(id).slice(1), 16);
+  
+    const rhs = n.children[1].label;
     if (typeof rhs === "string" && rhs.length > 1 && isNaN(+rhs)) {
-      // allocate the literal into data segment and get its heap address
-      const strAddr = parseInt(this.allocString(rhs).slice(3), 10);
-      // LDX #<addr>
-      this.emitByte(0xA2);
+      const strAddr = this.allocString(rhs);
+      // LDA #$nn
+      this.emitByte(0xA9);
       this.emitByte(strAddr & 0xFF);
-      // STX <varAddr>  (store pointer into zero‑page)
-      this.emitByte(0x8E);
+      // STA $vvvv
+      this.emitByte(0x8D);
       this.emitWord(varAddr);
       return;
     }
   
-    // ---- numbers or expressions ----
+    // fallback for numbers/expressions
     this.genExpr(n.children[1]);
     this.emitByte(0x8D);
     this.emitWord(varAddr);
   }
   
-
   private emitPrint(n: ASTNode) {
-    const varName = n.children[0].label;
-    const zpAddr  = parseInt(this.allocVar(varName).slice(1), 16);
+    const arg = n.children[0].label;
   
-    // LDY zpAddr
-    this.emitByte(0xA0);
-    this.emitByte(zpAddr & 0xFF);
+    // ---- String‐print path ----
+    if (this.strAddrs.has(arg)) {
+      // lookup literal’s address (e.g. 0x06)
+      const strAddr = this.strAddrs.get(arg)!;
   
-    // LDX #$02   (print‐string syscall)
-    this.emitByte(0xA2);
-    this.emitByte(0x02);
+      // LDY #$06
+      this.emitByte(0xA0);
+      this.emitByte(strAddr & 0xFF);
   
-    // FF         
-    this.emitByte(0xFF);
+      // LDX #$02
+      this.emitByte(0xA2);
+      this.emitByte(0x02);
+  
+      // SYS
+      this.emitByte(0xFF);
+      return;
+    }
+  
+    // ---- Integer‐print path ----
+    if (/^[a-z]$/.test(arg)) {
+      const zpAddr = parseInt(this.allocVar(arg).slice(1), 16);
+  
+      // LDY $zz
+      this.emitByte(0xAC);
+      this.emitWord(zpAddr);
+  
+      // LDX #$01
+      this.emitByte(0xA2);
+      this.emitByte(0x01);
+  
+      // SYS
+      this.emitByte(0xFF);
+      return;
+    }
+  
+    throw new Error(`emitPrint: unexpected argument ${arg}`);
   }
+   
   
 
 
