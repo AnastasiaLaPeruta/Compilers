@@ -330,7 +330,7 @@ function processPrograms() {
                       } 
                       
                       // ── generate 6502a code ──
-                      if (lexResult.errors === 0 && !result.error && errorCount === 0) { // doesn't show op codes if errors are present
+                      if (lexResult.errors === 0 && !result.error && semanticAnalyzer.errors.length === 0) { // doesn't show op codes if errors are present
                         const cg    = new CodeGenerator();
                         const bytes = cg.generateBytes(astRoot);
                         // helper to format 8 per line, e.g. "A9 00 8D 2D 00  A9 01 8D"
