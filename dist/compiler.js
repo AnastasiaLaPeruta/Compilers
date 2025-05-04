@@ -1246,16 +1246,19 @@ class CodeGenerator {
         this.emitByte(0xFF);
     }
     emitIf(n) {
-        const elseL = this.labelCount++;
-        const endL = this.labelCount++;
         this.genExpr(n.children[0]);
-        this.emitByte(0xC0);
-        this.emitByte(0x01);
-        this.emitByte(0xD0);
+        // Compare to zero (false), and branch if false
+        this.emitByte(0xC9);
         this.emitByte(0x00);
+        this.emitByte(0xF0);
+        const patchOffsetIdx = this.code.length;
+        this.emitByte(0x00);
+        // “Then” block
         this.walk(n.children[1]);
-        this.emitByte(0x4C);
-        this.emitWord(0x0000);
+        //  jumps here (just after the then‑block)
+        const afterThen = this.code.length;
+        const branchDistance = afterThen - (patchOffsetIdx + 1);
+        this.code[patchOffsetIdx] = branchDistance & 0xFF;
     }
     emitWhile(n) {
         // remember where the top of the loop lives
