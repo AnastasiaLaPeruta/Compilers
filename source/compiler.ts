@@ -320,21 +320,24 @@ function processPrograms() {
                       }
                       
 
-                      // ── generate 6502a code ──
-                      const cg    = new CodeGenerator();
-                      const bytes = cg.generateBytes(astRoot);
-                      // helper to format 8 per line, e.g. "A9 00 8D 2D 00  A9 01 8D"
-                      compileOutput += "\nGenerated 6502a Machine Code:\n"
-                                    + formatHexLines(bytes, 8).join("\n") 
-                                    + "\n";
-                      
+                    
 
 
                       if (errorCount === 0) {
                         compileOutput += "\n" + semanticAnalyzer.symbolTable.display(programNumber);
                       } else {
                         compileOutput += `\nProgram ${programNumber} Symbol Table not produced due to error(s) detected by semantic analysis\n`;
-                      }       
+                      } 
+                      
+                      // ── generate 6502a code ──
+                      if (lexResult.errors === 0 && !result.error && errorCount === 0) { // doesn't show op codes if errors are present
+                        const cg    = new CodeGenerator();
+                        const bytes = cg.generateBytes(astRoot);
+                        // helper to format 8 per line, e.g. "A9 00 8D 2D 00  A9 01 8D"
+                        compileOutput += "\nGenerated 6502a Machine Code:\n"
+                                    + formatHexLines(bytes, 8).join("\n") 
+                                    + "\n";
+                      }
 
                   } else {
                       compileOutput += `\nAST for program ${programNumber}: AST generation returned no nodes.\n`;
