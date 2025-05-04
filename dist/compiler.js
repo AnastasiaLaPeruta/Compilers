@@ -1160,10 +1160,8 @@ class CodeGenerator {
     walk(node) {
         switch (node.label) {
             case 'BLOCK':
-            case 'BLOCK':
                 this.enterScope();
                 node.children.forEach(c => this.walk(c));
-                this.exitScope();
                 return;
             case 'Variable Declaration':
                 // only allocate space for non‐string vars into zero page
@@ -1284,29 +1282,32 @@ class CodeGenerator {
         this.code[bneOffsetIdx] = offset & 0xFF;
     }
     genExpr(n) {
+        // Numeric literal
         if (/^[0-9]+$/.test(n.label)) {
             const v = parseInt(n.label, 10);
-            this.emitByte(0xA9);
+            this.emitByte(0xA9); // LDA #$vv
             this.emitByte(v & 0xFF);
             return;
         }
-        // addition
+        // Addition
         if (n.label === 'IntExpr') {
             const tmp = this.tempAddr++;
             this.genExpr(n.children[0]);
-            this.emitByte(0x8D);
+            this.emitByte(0x8D); // STA tmp
             this.emitWord(tmp);
             this.genExpr(n.children[1]);
-            this.emitByte(0x6D);
+            this.emitByte(0x6D); // ADC tmp
             this.emitWord(tmp);
             return;
         }
-        // variable load
+        // Variable load 
         if (/^[a-z]$/.test(n.label)) {
-            const addr = parseInt(this.allocVar(n.label).slice(1), 16);
-            this.emitByte(0xAD);
+            const addr = parseInt(this.lookupVar(n.label).slice(1), 16);
+            this.emitByte(0xAD); // LDA $zz
             this.emitWord(addr);
+            return;
         }
+        throw new Error(`genExpr: unhandled node ${n.label}`);
     }
 }
 // ----------------------- DOM Event Listener ----------------------- //
