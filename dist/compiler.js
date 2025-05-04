@@ -293,10 +293,22 @@ function processPrograms() {
                         for (const warn of semanticAnalyzer.warnings) {
                             compileOutput += `WARNING: ${warn}\n`;
                         }
+                        function formatHexLines(data, perLine) {
+                            const lines = [];
+                            for (let i = 0; i < data.length; i += perLine) {
+                                lines.push(data.slice(i, i + perLine)
+                                    .map(b => b.toString(16).padStart(2, '0').toUpperCase())
+                                    .join(" "));
+                            }
+                            return lines;
+                        }
                         // ── generate 6502a code ──
                         const cg = new CodeGenerator();
-                        const asm = cg.generate(astRoot);
-                        compileOutput += "\nGenerated 6502a Assembly:\n" + asm + "\n";
+                        const bytes = cg.generateBytes(astRoot);
+                        // helper to format 8 per line, e.g. "A9 00 8D 2D 00  A9 01 8D"
+                        compileOutput += "\nGenerated 6502a Machine Code:\n"
+                            + formatHexLines(bytes, 8).join("\n")
+                            + "\n";
                         if (errorCount === 0) {
                             compileOutput += "\n" + semanticAnalyzer.symbolTable.display(programNumber);
                         }
@@ -1112,20 +1124,31 @@ class CodeGenerator {
         this.tempAddr = 0x00F0;
         this.labelCount = 0;
     }
-    generate(ast) {
+    // emit one byte
+    emitByte(b) {
+        this.code.push(b & 0xFF);
+    }
+    // emit a 16‑bit word, little‑endian
+    emitWord(w) {
+        this.emitByte(w & 0xFF);
+        this.emitByte((w >> 8) & 0xFF);
+    }
+    generateBytes(ast) {
         this.code.length = 0;
-        this.code.push('; --- CODE (org $0000) ---', '.org $0000');
+        // --- text section ---
         this.walk(ast);
-        this.code.push('    BRK', '', '; --- DATA ---');
-        // allocate vars
-        for (const [name] of this.varAddrs) {
-            this.code.push(`${name}: .res 1`);
+        // BRK
+        this.emitByte(0x00);
+        // --- reserve vars (one byte each) ---
+        for (const _ of this.varAddrs)
+            this.emitByte(0x00);
+        // --- string literals (ascii …,0) ---
+        for (const [str] of this.strLits) {
+            for (const c of str)
+                this.emitByte(c.charCodeAt(0));
+            this.emitByte(0x00);
         }
-        // emit string literals
-        for (const [str, label] of this.strLits) {
-            this.code.push(`${label}: .ascii "${str}",0`);
-        }
-        return this.code.join('\n');
+        return this.code;
     }
     walk(node) {
         switch (node.label) {
@@ -1166,67 +1189,91 @@ class CodeGenerator {
         }
         return this.strLits.get(str);
     }
-    emit(line) {
-        this.code.push(line);
-    }
     emitAssign(n) {
         const id = n.children[0].label;
-        const addr = this.allocVar(id);
+        const addr = parseInt(this.allocVar(id).slice(1), 16);
         this.genExpr(n.children[1]);
-        this.emit(`    STA ${addr}`);
+        this.emitByte(0x8D);
+        this.emitWord(addr);
     }
     emitPrint(n) {
         const e = n.children[0];
         if (/^[0-9]+$/.test(e.label) || e.label === 'IntExpr') {
             this.genExpr(e);
-            this.emit('    TAY');
-            this.emit('    LDX #$01');
-            this.emit('    SYS');
+            this.emitByte(0xA8);
+            this.emitByte(0xA2);
+            this.emitByte(0x01);
+            this.emitByte(0xFF);
         }
         else {
             const lbl = this.allocString(e.label);
-            this.emit('    LDX #$02');
-            this.emit(`    LDY ${lbl}`);
-            this.emit('    SYS');
+            this.emitByte(0xA2);
+            this.emitByte(0x02);
+            const addr = parseInt(lbl.slice(3), 10);
+            this.emitByte(0xAC);
+            this.emitWord(addr);
+            this.emitByte(0xFF);
         }
     }
     emitIf(n) {
-        const elseL = `ELSE${this.labelCount++}`, endL = `END${this.labelCount++}`;
+        const elseL = this.labelCount++;
+        const endL = this.labelCount++;
         this.genExpr(n.children[0]);
-        this.emit('    CPY #$01');
-        this.emit(`    BNE ${elseL}`);
+        this.emitByte(0xC0);
+        this.emitByte(0x01);
+        this.emitByte(0xD0);
+        this.emitByte(0x00);
         this.walk(n.children[1]);
-        this.emit(`    JMP ${endL}`);
-        this.emit(`${elseL}:`);
-        this.emit(`${endL}:`);
+        this.emitByte(0x4C);
+        this.emitWord(0x0000);
     }
     emitWhile(n) {
-        const start = `LOOP${this.labelCount++}`, end = `ENDL${this.labelCount++}`;
-        this.emit(`${start}:`);
+        // remember where the top of the loop lives
+        const loopStartAddr = this.code.length;
+        // generate the condition (leaves result in Y)
         this.genExpr(n.children[0]);
-        this.emit('    CPY #$01');
-        this.emit(`    BEQ ${end}`);
+        // CPY #$01
+        this.emitByte(0xC0);
+        this.emitByte(0x01);
+        // BNE exitLoop
+        this.emitByte(0xD0);
+        // placeholder for offset
+        const bneOffsetIdx = this.code.length;
+        this.emitByte(0x00);
+        // emit the body
         this.walk(n.children[1]);
-        this.emit(`    JMP ${start}`);
-        this.emit(`${end}:`);
+        // JMP loopStart
+        this.emitByte(0x4C);
+        this.emitWord(loopStartAddr);
+        // now patch that BNE so it skips over the body
+        const exitAddr = this.code.length;
+        // offset is from after the branch’s operand
+        const offset = exitAddr - (bneOffsetIdx + 1);
+        this.code[bneOffsetIdx] = offset & 0xFF;
     }
     genExpr(n) {
         if (/^[0-9]+$/.test(n.label)) {
-            const v = parseInt(n.label, 10).toString(16).padStart(2, '0');
-            this.emit(`    LDA #$${v}`);
+            const v = parseInt(n.label, 10);
+            this.emitByte(0xA9);
+            this.emitByte(v & 0xFF);
             return;
         }
+        // addition
         if (n.label === 'IntExpr') {
-            const ta = `$${this.tempAddr.toString(16).padStart(4, '0')}`;
+            const tmp = this.tempAddr++;
             this.genExpr(n.children[0]);
-            this.emit(`    STA ${ta}`);
+            this.emitByte(0x8D);
+            this.emitWord(tmp);
             this.genExpr(n.children[1]);
-            this.emit(`    ADC ${ta}`);
+            this.emitByte(0x6D);
+            this.emitWord(tmp);
             return;
         }
+        // variable load
         if (/^[a-z]$/.test(n.label)) {
-            const addr = this.allocVar(n.label);
-            this.emit(`    LDA ${addr}`);
+            const addr = parseInt(this.allocVar(n.label).slice(1), 16);
+            this.emitByte(0xAD);
+            this.emitWord(addr);
         }
     }
 }
