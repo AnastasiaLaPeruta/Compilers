@@ -1193,29 +1193,36 @@ class CodeGenerator {
     }
     emitAssign(n) {
         const id = n.children[0].label;
-        const addr = parseInt(this.allocVar(id).slice(1), 16);
+        const varAddr = parseInt(this.allocVar(id).slice(1), 16);
+        const rhs = n.children[1].label;
+        // ---- strings ----
+        if (typeof rhs === "string" && rhs.length > 1 && isNaN(+rhs)) {
+            // allocate the literal into data segment and get its heap address
+            const strAddr = parseInt(this.allocString(rhs).slice(3), 10);
+            // LDX #<addr>
+            this.emitByte(0xA2);
+            this.emitByte(strAddr & 0xFF);
+            // STX <varAddr>  (store pointer into zero‑page)
+            this.emitByte(0x8E);
+            this.emitWord(varAddr);
+            return;
+        }
+        // ---- numbers or expressions ----
         this.genExpr(n.children[1]);
         this.emitByte(0x8D);
-        this.emitWord(addr);
+        this.emitWord(varAddr);
     }
     emitPrint(n) {
-        const e = n.children[0];
-        if (/^[0-9]+$/.test(e.label) || e.label === 'IntExpr') {
-            this.genExpr(e);
-            this.emitByte(0xA8);
-            this.emitByte(0xA2);
-            this.emitByte(0x01);
-            this.emitByte(0xFF);
-        }
-        else {
-            const lbl = this.allocString(e.label);
-            this.emitByte(0xA2);
-            this.emitByte(0x02);
-            const addr = parseInt(lbl.slice(3), 10);
-            this.emitByte(0xAC);
-            this.emitWord(addr);
-            this.emitByte(0xFF);
-        }
+        const varName = n.children[0].label;
+        const zpAddr = parseInt(this.allocVar(varName).slice(1), 16);
+        // LDY zpAddr
+        this.emitByte(0xA0);
+        this.emitByte(zpAddr & 0xFF);
+        // LDX #$02   (print‐string syscall)
+        this.emitByte(0xA2);
+        this.emitByte(0x02);
+        // FF         
+        this.emitByte(0xFF);
     }
     emitIf(n) {
         const elseL = this.labelCount++;
