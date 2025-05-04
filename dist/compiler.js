@@ -1120,7 +1120,7 @@ function buildASTFromCST(cstNode) {
 class CodeGenerator {
     constructor() {
         this.code = [];
-        this.varAddrs = new Map();
+        this.varAddrsStack = [new Map()];
         // holds the byte‐address where each literal will live
         this.strAddrs = new Map();
         this.strVarAddrs = new Map();
@@ -1128,6 +1128,8 @@ class CodeGenerator {
         this.tempAddr = 0x00F0;
         this.labelCount = 0;
     }
+    enterScope() { this.varAddrsStack.push(new Map()); }
+    exitScope() { this.varAddrsStack.pop(); }
     // emit one byte
     emitByte(b) {
         this.code.push(b & 0xFF);
@@ -1144,8 +1146,10 @@ class CodeGenerator {
         // BRK
         this.emitByte(0x00);
         // --- reserve vars (one byte each) ---
-        for (const _ of this.varAddrs)
-            this.emitByte(0x00);
+        for (const scope of this.varAddrsStack) {
+            for (const _ of scope.values())
+                this.emitByte(0x00);
+        }
         for (const [str] of this.strAddrs) {
             for (const c of str)
                 this.emitByte(c.charCodeAt(0));
@@ -1156,8 +1160,11 @@ class CodeGenerator {
     walk(node) {
         switch (node.label) {
             case 'BLOCK':
+            case 'BLOCK':
+                this.enterScope();
                 node.children.forEach(c => this.walk(c));
-                break;
+                this.exitScope();
+                return;
             case 'Variable Declaration':
                 // only allocate space for non‐string vars into zero page
                 if (node.children[0].label !== 'string') {
@@ -1181,11 +1188,20 @@ class CodeGenerator {
         }
     }
     allocVar(name) {
-        if (!this.varAddrs.has(name)) {
-            this.varAddrs.set(name, `$${this.nextDataAddr.toString(16).padStart(4, '0')}`);
+        const current = this.varAddrsStack[this.varAddrsStack.length - 1];
+        if (!current.has(name)) {
+            current.set(name, `$${this.nextDataAddr.toString(16).padStart(2, '0')}`);
             this.nextDataAddr++;
         }
-        return this.varAddrs.get(name);
+        return current.get(name);
+    }
+    lookupVar(name) {
+        for (let i = this.varAddrsStack.length - 1; i >= 0; i--) {
+            const m = this.varAddrsStack[i];
+            if (m.has(name))
+                return m.get(name);
+        }
+        throw new Error(`Variable '${name}' not declared`);
     }
     allocString(str) {
         if (!this.strAddrs.has(str)) {
@@ -1224,7 +1240,7 @@ class CodeGenerator {
             return;
         }
         // integer‑print
-        const zpAddr = parseInt(this.allocVar(arg).slice(1), 16);
+        const zpAddr = parseInt(this.lookupVar(arg).slice(1), 16);
         this.emitByte(0xAC);
         this.emitWord(zpAddr);
         this.emitByte(0xA2);
