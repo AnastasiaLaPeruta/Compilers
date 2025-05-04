@@ -842,17 +842,19 @@ class SemanticAnalyzer {
 
 
     for (const entry of this.symbolTable.allSymbols) {
-      if (!entry.used) {
-        this.warnings.push(`Warning: Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never used.`);
+      if (entry.initialized && !entry.used) {
+        this.warnings.push(
+        `Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never used.`
+        );
       }
-      if (!entry.initialized) {
-        this.warnings.push(`Warning: Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never assigned a value.`);
+      else if (!entry.initialized) {
+        this.warnings.push(
+        `Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never assigned a value.`
+        );
       }
     }
-    
   }
-
-
+  
   // recursively traverse the AST to perform checking.
   traverse(node: ASTNode, isGlobal: boolean = false): void {
     if (!node) return;

@@ -752,11 +752,11 @@ class SemanticAnalyzer {
         // includes any errors collected during symbol table operations
         this.errors.push(...this.symbolTable.errors);
         for (const entry of this.symbolTable.allSymbols) {
-            if (!entry.used) {
-                this.warnings.push(`Warning: Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never used.`);
+            if (entry.initialized && !entry.used) {
+                this.warnings.push(`Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never used.`);
             }
-            if (!entry.initialized) {
-                this.warnings.push(`Warning: Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never assigned a value.`);
+            else if (!entry.initialized) {
+                this.warnings.push(`Variable '${entry.name}' declared at line ${entry.line}, column ${entry.column} but never assigned a value.`);
             }
         }
     }
