@@ -1253,7 +1253,142 @@ const astNode = new ASTNode(newLabel, line, column);
   return astNode;
 }
 
+// ChatGPT used here
+// ----------------------- Code Generator ----------------------- //
+class CodeGenerator {
+  private code: string[] = [];
+  private varAddrs = new Map<string,string>();
+  private strLits  = new Map<string,string>();
+  private nextDataAddr = 0x0010;
+  private tempAddr    = 0x00F0;
+  private labelCount  = 0;
 
+  public generate(ast: ASTNode): string {
+    this.code.length = 0;
+    this.code.push('; --- CODE (org $0000) ---', '.org $0000');
+    this.walk(ast);
+    this.code.push('    BRK', '', '; --- DATA ---');
+    // allocate vars
+    for (const [name] of this.varAddrs) {
+      this.code.push(`${name}: .res 1`);
+    }
+    // emit string literals
+    for (const [str,label] of this.strLits) {
+      this.code.push(`${label}: .ascii "${str}",0`);
+    }
+    return this.code.join('\n');
+  }
+
+  private walk(node: ASTNode) {
+    switch (node.label) {
+      case 'BLOCK':
+        node.children.forEach(c => this.walk(c));
+        break;
+      case 'Variable Declaration':
+        this.allocVar(node.children[1].label);
+        break;
+      case 'Assignment Statement':
+        this.emitAssign(node);
+        break;
+      case 'Print Statement':
+        this.emitPrint(node);
+        break;
+      case 'If Statement':
+        this.emitIf(node);
+        break;
+      case 'While Statement':
+        this.emitWhile(node);
+        break;
+      default:
+        node.children.forEach(c => this.walk(c));
+    }
+  }
+
+  private allocVar(name: string) {
+    if (!this.varAddrs.has(name)) {
+      this.varAddrs.set(name, `$${this.nextDataAddr.toString(16).padStart(4,'0')}`);
+      this.nextDataAddr++;
+    }
+    return this.varAddrs.get(name)!;
+  }
+
+  private allocString(str: string) {
+    if (!this.strLits.has(str)) {
+      const lbl = `STR${this.labelCount++}`;
+      this.strLits.set(str, lbl);
+      this.nextDataAddr += str.length + 1;
+    }
+    return this.strLits.get(str)!;
+  }
+
+  private emit(line: string) {
+    this.code.push(line);
+  }
+
+  private emitAssign(n: ASTNode) {
+    const id = n.children[0].label;
+    const addr = this.allocVar(id);
+    this.genExpr(n.children[1]);
+    this.emit(`    STA ${addr}`);
+  }
+
+  private emitPrint(n: ASTNode) {
+    const e = n.children[0];
+    if (/^[0-9]+$/.test(e.label) || e.label==='IntExpr') {
+      this.genExpr(e);
+      this.emit('    TAY');
+      this.emit('    LDX #$01');
+      this.emit('    SYS');
+    } else {
+      const lbl = this.allocString(e.label);
+      this.emit('    LDX #$02');
+      this.emit(`    LDY ${lbl}`);
+      this.emit('    SYS');
+    }
+  }
+
+  private emitIf(n: ASTNode) {
+    const elseL = `ELSE${this.labelCount++}`, endL = `END${this.labelCount++}`;
+    this.genExpr(n.children[0]);
+    this.emit('    CPY #$01');
+    this.emit(`    BNE ${elseL}`);
+    this.walk(n.children[1]);
+    this.emit(`    JMP ${endL}`);
+    this.emit(`${elseL}:`);
+    this.emit(`${endL}:`);
+  }
+
+  private emitWhile(n: ASTNode) {
+    const start = `LOOP${this.labelCount++}`, end = `ENDL${this.labelCount++}`;
+    this.emit(`${start}:`);
+    this.genExpr(n.children[0]);
+    this.emit('    CPY #$01');
+    this.emit(`    BEQ ${end}`);
+    this.walk(n.children[1]);
+    this.emit(`    JMP ${start}`);
+    this.emit(`${end}:`);
+  }
+
+  private genExpr(n: ASTNode) {
+    if (/^[0-9]+$/.test(n.label)) {
+      const v=parseInt(n.label,10).toString(16).padStart(2,'0');
+      this.emit(`    LDA #$${v}`);
+      return;
+    }
+    if (n.label==='IntExpr') {
+      const ta=`$${this.tempAddr.toString(16).padStart(4,'0')}`;
+      this.genExpr(n.children[0]);
+      this.emit(`    STA ${ta}`);
+      this.genExpr(n.children[1]);
+      this.emit(`    ADC ${ta}`);
+      return;
+    }
+    if (/^[a-z]$/.test(n.label)) {
+      const addr=this.allocVar(n.label);
+      this.emit(`    LDA ${addr}`);
+    }
+  }
+}
 
 
   
