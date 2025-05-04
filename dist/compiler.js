@@ -820,6 +820,11 @@ class SemanticAnalyzer {
             else {
                 entry.initialized = true;
                 entry.used = true;
+                if (!entry) {
+                    this.errors.push(`Semantic Error: Variable '${idNode.label}' used before declaration at line ${idNode.line}, column ${idNode.column}.`);
+                    return;
+                }
+                entry.initialized = true;
                 const exprType = this.evaluateExpression(exprNode);
                 if (exprType && exprType !== entry.type) {
                     this.errors.push(`Semantic Error: Type mismatch in assignment to '${idNode.label}', found ${exprType}.`);
