@@ -104,7 +104,8 @@ function lexProgram(progText: string, lineOffset: number = 0): { tokens: Token[]
             if (commentContent.trim().length === 0) {
               output += `WARNING Lexer - Warning: line ${globalLine} - Empty comment block detected.\n\n`;
             }
-            continue; // Skip further processing inside comment.
+            charIndex--;
+            continue;
         }
         
         // --- Keywords and operators ---

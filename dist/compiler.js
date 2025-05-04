@@ -92,7 +92,8 @@ function lexProgram(progText, lineOffset = 0) {
                 if (commentContent.trim().length === 0) {
                     output += `WARNING Lexer - Warning: line ${globalLine} - Empty comment block detected.\n\n`;
                 }
-                continue; // Skip further processing inside comment.
+                charIndex--;
+                continue;
             }
             // --- Keywords and operators ---
             else if (line.substring(charIndex, charIndex + 5) === "print") {
