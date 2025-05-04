@@ -920,7 +920,6 @@ handleVarDecl(node: ASTNode): void {
             
           } else {
             entry.initialized = true;
-            entry.used = true;
 
             if (!entry) {
               this.errors.push(
