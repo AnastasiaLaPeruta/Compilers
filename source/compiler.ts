@@ -854,7 +854,7 @@ class SemanticAnalyzer {
       }
     }
   }
-  
+
   // recursively traverse the AST to perform checking.
   traverse(node: ASTNode, isGlobal: boolean = false): void {
     if (!node) return;
@@ -970,7 +970,33 @@ handleVarDecl(node: ASTNode): void {
 
   // evaluate expressions to infer their types
   evaluateExpression(node: ASTNode): string | null {
+
     if (!node) return null;
+
+    if (node.label === "IntExpr") {
+      const types = node.children
+      .map(c => this.evaluateExpression(c))
+      .filter((t): t is string => !!t);
+      if (types.length > 1 && types[1] !== "int") {
+        this.errors.push(
+        `Semantic Error: Cannot apply '+' between 'int' and '${types[1]}'.`
+        );
+      }
+      return "int";
+    }
+
+    // catch mixing non-bool in a boolean expression
+    if (node.label === "BooleanExpr") {
+      const types = node.children
+      .map(c => this.evaluateExpression(c))
+      .filter((t): t is string => !!t);
+      if (types.length > 1 && types[0] !== types[1]) {
+        this.errors.push(
+        `Semantic Error: Cannot apply boolean operator between '${types[0]}' and '${types[1]}'.`
+        );
+      }
+      return "bool";
+    }
 
     if (node.children.length === 0) {
         if (/^[0-9]+$/.test(node.label)) return "int";
