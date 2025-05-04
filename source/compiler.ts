@@ -1285,6 +1285,7 @@ class CodeGenerator {
   private varAddrs = new Map<string,string>();
   // holds the byte‐address where each literal will live
   private strAddrs = new Map<string,number>();
+  private strVarAddrs = new Map<string, number>();
 
   private nextDataAddr = 0x0010;
   private tempAddr    = 0x00F0;
@@ -1365,72 +1366,58 @@ class CodeGenerator {
     return this.strAddrs.get(str)!;
   }
   
-  private strVarAddrs = new Map<string,number>();
 
   
- 
   private emitAssign(n: ASTNode) {
-    const id      = n.children[0].label;
-    const varAddr = parseInt(this.allocVar(id).slice(1), 16);
-  
+    const id  = n.children[0].label;
     const rhs = n.children[1].label;
+  
+    // if it's a string literal, record its address at compile‑time
     if (typeof rhs === "string" && rhs.length > 1 && isNaN(+rhs)) {
       const strAddr = this.allocString(rhs);
-      // LDA #$nn
-      this.emitByte(0xA9);
-      this.emitByte(strAddr & 0xFF);
-      // STA $vvvv
-      this.emitByte(0x8D);
-      this.emitWord(varAddr);
+      this.strVarAddrs.set(id, strAddr);
       return;
     }
   
-    // fallback for numbers/expressions
+    // otherwise, your existing number/expression logic:
+    const varAddr = parseInt(this.allocVar(id).slice(1), 16);
     this.genExpr(n.children[1]);
     this.emitByte(0x8D);
     this.emitWord(varAddr);
   }
+ 
+
   
   private emitPrint(n: ASTNode) {
     const arg = n.children[0].label;
-  
-    // ---- String‐print path ----
-    if (this.strAddrs.has(arg)) {
-      // lookup literal’s address (e.g. 0x06)
-      const strAddr = this.strAddrs.get(arg)!;
-  
-      // LDY #$06
+
+    // if it’s a string variable, grab the address we recorded
+    if (this.strVarAddrs.has(arg)) {
+      const strAddr = this.strVarAddrs.get(arg)!;
+      // LDY #$nn
       this.emitByte(0xA0);
       this.emitByte(strAddr & 0xFF);
-  
       // LDX #$02
       this.emitByte(0xA2);
       this.emitByte(0x02);
-  
       // SYS
       this.emitByte(0xFF);
       return;
     }
-  
-    // ---- Integer‐print path ----
-    if (/^[a-z]$/.test(arg)) {
-      const zpAddr = parseInt(this.allocVar(arg).slice(1), 16);
-  
-      // LDY $zz
-      this.emitByte(0xAC);
-      this.emitWord(zpAddr);
-  
-      // LDX #$01
-      this.emitByte(0xA2);
-      this.emitByte(0x01);
-  
-      // SYS
-      this.emitByte(0xFF);
-      return;
-    }
-  
-    throw new Error(`emitPrint: unexpected argument ${arg}`);
+
+    // otherwise it must be an integer‐print
+    const zpAddr = parseInt(this.allocVar(arg).slice(1), 16);
+    // LDY $zz
+    this.emitByte(0xAC);
+    this.emitWord(zpAddr);
+    // LDX #$01
+    this.emitByte(0xA2);
+    this.emitByte(0x01);
+    // SYS
+    this.emitByte(0xFF);
   }
+
+
    
   
 
