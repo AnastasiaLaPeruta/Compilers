@@ -1125,7 +1125,7 @@ class CodeGenerator {
         // holds the byte‐address where each literal will live
         this.strAddrs = new Map();
         this.strVarAddrs = new Map();
-        this.nextDataAddr = 0x06;
+        this.nextDataAddr = 0x10;
         this.tempAddr = 0x00F0;
         this.labelCount = 0;
     }
@@ -1146,16 +1146,6 @@ class CodeGenerator {
         this.walk(ast);
         // BRK
         this.emitByte(0x00);
-        // --- reserve vars (one byte each) ---
-        for (const scope of this.varAddrsStack) {
-            for (const _ of scope.values())
-                this.emitByte(0x00);
-        }
-        for (const [str] of this.strAddrs) {
-            for (const c of str)
-                this.emitByte(c.charCodeAt(0));
-            this.emitByte(0x00);
-        }
         return this.code;
     }
     walk(node) {
@@ -1213,38 +1203,26 @@ class CodeGenerator {
     }
     emitAssign(n) {
         const id = n.children[0].label;
-        const rhs = n.children[1].label;
-        // record string literal address at compile time
-        if (typeof rhs === "string" && rhs.length > 1 && isNaN(+rhs)) {
-            const strAddr = this.allocString(rhs);
-            this.strVarAddrs.set(id, strAddr);
-            return;
-        }
-        // numeric/expression assignment
-        const varAddr = parseInt(this.allocVar(id).slice(1), 16);
+        const addr = parseInt(this.allocVar(id).slice(1), 16);
         this.genExpr(n.children[1]);
         this.emitByte(0x8D);
-        this.emitWord(varAddr);
+        this.emitWord(addr);
     }
     emitPrint(n) {
         const arg = n.children[0].label;
-        // string‑print
-        if (this.strVarAddrs.has(arg)) {
-            const strAddr = this.strVarAddrs.get(arg);
+        if (/^[0-9]+$/.test(arg)) {
+            // load literal directly into Y
             this.emitByte(0xA0);
-            this.emitByte(strAddr & 0xFF);
-            this.emitByte(0xA2);
-            this.emitByte(0x02);
-            this.emitByte(0xFF);
-            return;
+            this.emitByte(parseInt(arg, 10) & 0xFF);
         }
-        // integer‑print
-        const zpAddr = parseInt(this.lookupVar(arg).slice(1), 16);
-        this.emitByte(0xAC);
-        this.emitWord(zpAddr);
-        this.emitByte(0xA2);
+        else {
+            const addr = parseInt(this.lookupVar(arg).slice(1), 16);
+            this.emitByte(0xAC);
+            this.emitWord(addr);
+        }
+        this.emitByte(0xA2); // LDX #$01  (print integer)
         this.emitByte(0x01);
-        this.emitByte(0xFF);
+        this.emitByte(0xFF); // SYS
     }
     emitIf(n) {
         this.genExpr(n.children[0]);
