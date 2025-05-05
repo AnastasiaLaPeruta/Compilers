@@ -1264,14 +1264,26 @@ class CodeGenerator {
         this.code[bneOffsetIdx] = offset & 0xFF;
     }
     genExpr(n) {
-        // Numeric literal
+        // --- STRING LITERAL ---
+        // We collapse any quoted string in the AST into a leaf whose label is the full text
+        if (/^[a-z ]+$/.test(n.label) && n.label.includes(" ")) {
+            // Allocate the string in your data segment
+            const addr = this.allocString(n.label);
+            // Load the *low* byte of the string’s address into X (we’ll treat X=2 as “print string”)
+            this.emitByte(0xA2); // LDX #$vv
+            this.emitByte(addr & 0xFF);
+            // Invoke the OS/system call for “print string” (assuming SYS when X=2)
+            this.emitByte(0xFF); // SYS
+            return;
+        }
+        // --- NUMERIC LITERAL ---
         if (/^[0-9]+$/.test(n.label)) {
             const v = parseInt(n.label, 10);
             this.emitByte(0xA9); // LDA #$vv
             this.emitByte(v & 0xFF);
             return;
         }
-        // Addition
+        // --- INT EXPR (addition) ---
         if (n.label === 'IntExpr') {
             const tmp = this.tempAddr++;
             this.genExpr(n.children[0]);
@@ -1282,7 +1294,7 @@ class CodeGenerator {
             this.emitWord(tmp);
             return;
         }
-        // Variable load 
+        // --- VARIABLE LOAD (single‐letter) ---
         if (/^[a-z]$/.test(n.label)) {
             const addr = parseInt(this.lookupVar(n.label).slice(1), 16);
             this.emitByte(0xAD); // LDA $zz
