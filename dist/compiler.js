@@ -977,6 +977,24 @@ function buildASTFromCST(cstNode) {
         // return a single leaf node with that entire string
         return new ASTNode(fullString);
     }
+    // ------------------------------------------------------
+    // turn every BooleanExpr into a flat [left, right] AST
+    if (cstNode.label === "BooleanExpr") {
+        // either a bare boolval:
+        if (cstNode.children.length === 1) {
+            return buildASTFromCST(cstNode.children[0]);
+        }
+        // or a parenthesized comparison: ( Expr boolop Expr )
+        const left = buildASTFromCST(cstNode.children[1]);
+        const right = buildASTFromCST(cstNode.children[3]);
+        const boolNode = new ASTNode("BooleanExpr");
+        if (left)
+            boolNode.addChild(left);
+        if (right)
+            boolNode.addChild(right);
+        return boolNode;
+    }
+    // ------------------------------------------------------
     const skipLabels = new Set(["Statement List", "{", "}", "(", ")", "$"]);
     if (skipLabels.has(cstNode.label)) {
         let aggregated = null;
@@ -1246,7 +1264,17 @@ class CodeGenerator {
         this.emitByte(0xFF); // SYS
     }
     emitIf(n) {
-        this.genExpr(n.children[0]);
+        const condAST = n.children.find(c => c.label === "BooleanExpr");
+        if (!condAST || condAST.children.length < 1) {
+            throw new Error("emitIf: could not find a valid BooleanExpr AST node");
+        }
+        // pick the left‐hand operand 
+        let operand = condAST.children[0];
+        // if it’s wrapped in an Expr node, unwrap it
+        if (operand.label === "Expr" && operand.children.length === 1) {
+            operand = operand.children[0];
+        }
+        this.genExpr(operand);
         // Compare to zero (false), and branch if false
         this.emitByte(0xC9);
         this.emitByte(0x00);
@@ -1264,7 +1292,7 @@ class CodeGenerator {
         // remember where the top of the loop lives
         const loopStartAddr = this.code.length;
         // generate the condition (leaves result in Y)
-        this.genExpr(n.children[0]);
+        this.genExpr(n.children[1]);
         // CPY #$01
         this.emitByte(0xC0);
         this.emitByte(0x01);
@@ -1285,6 +1313,11 @@ class CodeGenerator {
         this.code[bneOffsetIdx] = offset & 0xFF;
     }
     genExpr(n) {
+        if (n.label === "true" || n.label === "false") {
+            this.emitByte(0xA0); // LDY
+            this.emitByte(n.label === "true" ? 1 : 0);
+            return;
+        }
         // --- STRING LITERAL ---
         // We collapse any quoted string in the AST into a leaf whose label is the full text
         if (/^[a-z ]+$/.test(n.label) && n.label.includes(" ")) {
