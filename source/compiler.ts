@@ -1314,8 +1314,33 @@ class CodeGenerator {
     // BRK
     this.emitByte(0x00);
   
+    // --- data section: lay down each string literal + 0 terminator ---
+    // Find all (string, address) pairs, sorted by address:
+    const literals = Array.from(this.strAddrs.entries())
+                          .sort((a, b) => a[1] - b[1]);
+  
+    // Keep track of where we are in the final byte array
+    let nextDataPtr = this.code.length;
+  
+    for (const [str, addr] of literals) {
+      // pad with zeros until we reach the desired data address
+      while (nextDataPtr < addr) {
+        this.emitByte(0x00);
+        nextDataPtr++;
+      }
+      // now emit the ASCII bytes of the string
+      for (const ch of str) {
+        this.emitByte(ch.charCodeAt(0));
+        nextDataPtr++;
+      }
+      // terminating zero
+      this.emitByte(0x00);
+      nextDataPtr++;
+    }
+  
     return this.code;
   }
+  
   
 
   private walk(node: ASTNode) {
@@ -1478,12 +1503,13 @@ private genExpr(n: ASTNode) {
     // Allocate the string in your data segment
     const addr = this.allocString(n.label);
 
-    // Load the *low* byte of the string’s address into X (we’ll treat X=2 as “print string”)
-    this.emitByte(0xA2);            // LDX #$vv
+    // load Y with the string’s address, X=2, then SYS
+    this.emitByte(0xA0);            // LDY #$nn
     this.emitByte(addr & 0xFF);
-
-    // Invoke the OS/system call for “print string” (assuming SYS when X=2)
+    this.emitByte(0xA2);            // LDX #$02
+    this.emitByte(0x02);
     this.emitByte(0xFF);            // SYS
+
     return;
   }
 
