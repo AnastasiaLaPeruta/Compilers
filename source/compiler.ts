@@ -1536,16 +1536,28 @@ private genExpr(n: ASTNode) {
       return;
     }
   
-    // ── BOOLEAN 
+       // ── BOOLEAN comparison (e.g. while (s != 3)) ──
     if (n.label === "BooleanExpr" && n.children.length === 2) {
-      const varName = n.children[0].label;                    
-      const lit      = parseInt(n.children[1].label, 10) & 0xFF; 
-  
-      // LDX 
+      // unwrap any single‑child Expr/IntExpr/StringExpr
+      let left  = n.children[0];
+      if ((left.label === "Expr" || left.label === "IntExpr" || left.label === "StringExpr")
+          && left.children.length === 1) {
+        left = left.children[0];
+      }
+     let right = n.children[1];
+      if ((right.label === "Expr" || right.label === "IntExpr" || right.label === "StringExpr")
+          && right.children.length === 1) {
+        right = right.children[0];
+      }
+
+      const varName = left.label;                    
+      const lit     = parseInt(right.label, 10) & 0xFF; 
+
+      // LDX #$lit
       this.emitByte(0xA2);
       this.emitByte(lit);
-  
-      // CPX 
+
+      // CPX varAddr
       const addr = parseInt(this.lookupVar(varName).slice(1), 16);
       this.emitByte(0xEC);
       this.emitWord(addr);
