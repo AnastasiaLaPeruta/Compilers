@@ -1344,7 +1344,7 @@ class CodeGenerator {
         }
         // --- STRING LITERAL ---
         // We collapse any quoted string in the AST into a leaf whose label is the full text
-        if (/^[a-z ]+$/.test(n.label) && n.label.includes(" ")) {
+        if (/^[a-z ]+$/.test(n.label)) {
             // Allocate the string in your data segment
             const addr = this.allocString(n.label);
             // load Y with the string’s address, X=2, then SYS
