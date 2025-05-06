@@ -1530,11 +1530,27 @@ private emitWhile(n: ASTNode) {
 
 
 private genExpr(n: ASTNode) {
-  if (n.label === "true" || n.label === "false") {
-    this.emitByte(0xA0);               // LDY
-    this.emitByte(n.label === "true" ? 1 : 0);
-    return;
-  }
+    if ((n.label === "Expr" || n.label === "IntExpr" || n.label === "StringExpr") 
+        && n.children.length === 1) {
+      this.genExpr(n.children[0]);
+      return;
+    }
+  
+    // ── BOOLEAN 
+    if (n.label === "BooleanExpr" && n.children.length === 2) {
+      const varName = n.children[0].label;                    
+      const lit      = parseInt(n.children[1].label, 10) & 0xFF; 
+  
+      // LDX 
+      this.emitByte(0xA2);
+      this.emitByte(lit);
+  
+      // CPX 
+      const addr = parseInt(this.lookupVar(varName).slice(1), 16);
+      this.emitByte(0xEC);
+      this.emitWord(addr);
+      return;
+    }
 
   // --- STRING LITERAL ---
   // We collapse any quoted string in the AST into a leaf whose label is the full text
